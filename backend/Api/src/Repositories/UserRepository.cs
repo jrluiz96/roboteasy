@@ -1,6 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using Api.Data;
 using Api.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Api.Repositories;
 
@@ -38,23 +38,14 @@ public class UserRepository : IUserRepository
     {
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
-        
-        // Reload with Permission
-        return await GetByIdAsync(user.Id) ?? user;
+        return user;
     }
 
     public async Task<User?> UpdateAsync(User user)
     {
-        var existing = await _context.Users.FindAsync(user.Id);
-        if (existing == null) return null;
-
-        existing.Name = user.Name;
-        existing.Username = user.Username;
-        existing.PermissionId = user.PermissionId;
-        existing.UpdatedAt = DateTime.UtcNow;
-
+        _context.Users.Update(user);
         await _context.SaveChangesAsync();
-        return await GetByIdAsync(existing.Id);
+        return user;
     }
 
     public async Task<bool> DeleteAsync(int id)
@@ -62,8 +53,7 @@ public class UserRepository : IUserRepository
         var user = await _context.Users.FindAsync(id);
         if (user == null) return false;
 
-        // Soft delete
-        user.DeletedAt = DateTime.UtcNow;
+        _context.Users.Remove(user);
         await _context.SaveChangesAsync();
         return true;
     }

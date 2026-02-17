@@ -13,7 +13,12 @@ services:
       - Database__User=roboteasy
       - Database__Password=roboteasy123
       - AppSettings__JwtSecret=eBs3Cr78JSHE8XhbjeyMytn2zODSsd9k
-      - AppSettings__JwtExpirationMinutes=60
+      - AppSettings__JwtExpirationHours=8
+      - Argon2__MemorySize=65536
+      - Argon2__Iterations=4
+      - Argon2__Parallelism=2
+      - Argon2__HashLength=32
+      - Argon2__SaltLength=16
     depends_on:
       db:
         condition: service_healthy

@@ -15,7 +15,6 @@ C:\C#\roboteasy\backend\Api\bin\Debug\net10.0\Api.deps.json
 C:\C#\roboteasy\backend\Api\bin\Debug\net10.0\Api.runtimeconfig.json
 C:\C#\roboteasy\backend\Api\bin\Debug\net10.0\Api.dll
 C:\C#\roboteasy\backend\Api\bin\Debug\net10.0\Api.pdb
-C:\C#\roboteasy\backend\Api\bin\Debug\net10.0\BCrypt.Net-Next.dll
 C:\C#\roboteasy\backend\Api\bin\Debug\net10.0\Humanizer.dll
 C:\C#\roboteasy\backend\Api\bin\Debug\net10.0\Microsoft.Build.Framework.dll
 C:\C#\roboteasy\backend\Api\bin\Debug\net10.0\Microsoft.CodeAnalysis.dll
@@ -124,3 +123,5 @@ C:\C#\roboteasy\backend\Api\obj\Debug\net10.0\refint\Api.dll
 C:\C#\roboteasy\backend\Api\obj\Debug\net10.0\Api.pdb
 C:\C#\roboteasy\backend\Api\obj\Debug\net10.0\Api.genruntimeconfig.cache
 C:\C#\roboteasy\backend\Api\obj\Debug\net10.0\ref\Api.dll
+C:\C#\roboteasy\backend\Api\bin\Debug\net10.0\Konscious.Security.Cryptography.Argon2.dll
+C:\C#\roboteasy\backend\Api\bin\Debug\net10.0\Konscious.Security.Cryptography.Blake2.dll

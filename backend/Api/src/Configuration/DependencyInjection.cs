@@ -27,12 +27,23 @@ public static class DependencyInjection
 
         // Services
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<ISessionService, SessionService>();
+        services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
+
+        // Argon2 Settings - validação obrigatória
+        var argon2Section = configuration.GetSection("Argon2");
+        _ = argon2Section["MemorySize"] ?? throw new InvalidOperationException("Argon2:MemorySize não configurado");
+        _ = argon2Section["Iterations"] ?? throw new InvalidOperationException("Argon2:Iterations não configurado");
+        _ = argon2Section["Parallelism"] ?? throw new InvalidOperationException("Argon2:Parallelism não configurado");
+        
+        services.Configure<Argon2Settings>(argon2Section);
 
         // Settings - validação obrigatória
         var appSettings = configuration.GetSection("AppSettings");
         var jwtSecret = appSettings["JwtSecret"] ?? throw new InvalidOperationException("AppSettings:JwtSecret não configurado");
         if (jwtSecret.Length < 32)
             throw new InvalidOperationException("AppSettings:JwtSecret deve ter no mínimo 32 caracteres");
+        _ = appSettings["JwtExpirationHours"] ?? throw new InvalidOperationException("AppSettings:JwtExpirationHours não configurado");
         
         services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
 

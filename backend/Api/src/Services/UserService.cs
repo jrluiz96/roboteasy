@@ -8,16 +8,18 @@ namespace Api.Services;
 public class UserService : IUserService
 {
     private readonly IUserRepository _repository;
+    private readonly IPasswordHasher _passwordHasher;
 
-    public UserService(IUserRepository repository)
+    public UserService(IUserRepository repository, IPasswordHasher passwordHasher)
     {
         _repository = repository;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<IEnumerable<UserResponse>> GetAllAsync()
     {
         var users = await _repository.GetAllAsync();
-        return users.Select(u => ToResponse(u));
+        return users.Select(ToResponse);
     }
 
     public async Task<UserResponse?> GetByIdAsync(int id)
@@ -32,7 +34,7 @@ public class UserService : IUserService
         {
             Name = request.Name,
             Username = request.Username,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            PasswordHash = _passwordHasher.Hash(request.Password),
             PermissionId = request.PermissionId
         };
 
@@ -42,15 +44,16 @@ public class UserService : IUserService
 
     public async Task<UserResponse?> UpdateAsync(int id, UpdateUserRequest request)
     {
-        var existing = await _repository.GetByIdAsync(id);
-        if (existing == null) return null;
+        var user = await _repository.GetByIdAsync(id);
+        if (user == null) return null;
 
-        if (request.Name != null) existing.Name = request.Name;
-        if (request.Username != null) existing.Username = request.Username;
-        if (request.PermissionId != null) existing.PermissionId = request.PermissionId.Value;
+        if (request.Name != null) user.Name = request.Name;
+        if (request.Username != null) user.Username = request.Username;
+        if (request.Password != null) user.PasswordHash = _passwordHasher.Hash(request.Password);
+        if (request.PermissionId != null) user.PermissionId = request.PermissionId.Value;
 
-        var updated = await _repository.UpdateAsync(existing);
-        return updated == null ? null : ToResponse(updated);
+        await _repository.UpdateAsync(user);
+        return ToResponse(user);
     }
 
     public async Task<bool> DeleteAsync(int id)

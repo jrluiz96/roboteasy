@@ -6,7 +6,7 @@ namespace Api.Configuration;
 public class AppSettings
 {
     public string JwtSecret { get; set; } = string.Empty;
-    public int JwtExpirationMinutes { get; set; } = 60;
+    public int JwtExpirationHours { get; set; }
 }
 
 public class DatabaseSettings

@@ -27,11 +27,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Mapeia controllers
+// Controllers
 app.MapControllers();
-
-// Rota de health check
-app.MapGet("/", () => "API is running!");
 
 // Migrate database
 using (var scope = app.Services.CreateScope())
