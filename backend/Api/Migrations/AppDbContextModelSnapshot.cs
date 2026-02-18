@@ -214,6 +214,9 @@ namespace Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AvatarUrl")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -223,6 +226,12 @@ namespace Api.Migrations
                     b.Property<string>("Email")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<long?>("GitHubId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("GitHubLogin")
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()

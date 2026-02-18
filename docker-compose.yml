@@ -19,6 +19,11 @@ services:
       - Argon2__Parallelism=2
       - Argon2__HashLength=32
       - Argon2__SaltLength=16
+      - GitHub__ClientId=SEU_CLIENT_ID_AQUI
+      - GitHub__ClientSecret=SEU_CLIENT_SECRET_AQUI
+      - GitHub__CallbackUrl=http://localhost:8080/api/v1/open/github/callback
+      - AppSettings__CorsOrigins=*
+      # http://localhost:5173,http://localhost:3000 CORS 
     depends_on:
       db:
         condition: service_healthy

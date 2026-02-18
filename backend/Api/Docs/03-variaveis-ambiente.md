@@ -19,6 +19,14 @@ Todas as configurações da API são obrigatórias e devem ser definidas via Doc
 | `AppSettings__JwtSecret` | Chave secreta para JWT (mínimo 32 caracteres) | `eBs3Cr78JSHE8XhbjeyMytn2zODSsd9k` |
 | `AppSettings__JwtExpirationHours` | Tempo de expiração do token em horas | `8` |
 
+## GitHub OAuth
+
+| Variável | Descrição | Exemplo |
+|----------|-----------|---------|
+| `GitHub__ClientId` | Client ID da OAuth App no GitHub | `Iv1.abc123...` |
+| `GitHub__ClientSecret` | Client Secret da OAuth App no GitHub | `abc123secret...` |
+| `GitHub__CallbackUrl` | URL de callback após autenticação | `http://localhost:8080/api/v1/open/github/callback` |
+
 ## Argon2 (Hash de Senha)
 
 Configurações para o algoritmo Argon2id usado no hash de senhas.

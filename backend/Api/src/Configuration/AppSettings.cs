@@ -7,6 +7,7 @@ public class AppSettings
 {
     public string JwtSecret { get; set; } = string.Empty;
     public int JwtExpirationHours { get; set; }
+    public string CorsOrigins { get; set; } = "*";
 }
 
 public class DatabaseSettings

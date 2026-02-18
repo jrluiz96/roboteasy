@@ -1,4 +1,7 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Api.Data;
 using Api.Repositories;
 using Api.Services;
@@ -29,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
+        services.AddSingleton<IJwtService, JwtService>();
+        services.AddHttpClient<IGitHubService, GitHubService>();
 
         // Argon2 Settings - validação obrigatória
         var argon2Section = configuration.GetSection("Argon2");
@@ -46,6 +51,38 @@ public static class DependencyInjection
         _ = appSettings["JwtExpirationHours"] ?? throw new InvalidOperationException("AppSettings:JwtExpirationHours não configurado");
         
         services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
+
+        // JWT Authentication
+        var key = Encoding.UTF8.GetBytes(jwtSecret);
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = "roboteasy",
+                ValidAudience = "roboteasy",
+                IssuerSigningKey = new SymmetricSecurityKey(key),
+                ClockSkew = TimeSpan.Zero
+            };
+        });
+        
+        services.AddAuthorization();
+
+        // GitHub OAuth Settings - validação obrigatória
+        var githubSection = configuration.GetSection("GitHub");
+        _ = githubSection["ClientId"] ?? throw new InvalidOperationException("GitHub:ClientId não configurado");
+        _ = githubSection["ClientSecret"] ?? throw new InvalidOperationException("GitHub:ClientSecret não configurado");
+        _ = githubSection["CallbackUrl"] ?? throw new InvalidOperationException("GitHub:CallbackUrl não configurado");
+        
+        services.Configure<GitHubSettings>(githubSection);
 
         return services;
     }

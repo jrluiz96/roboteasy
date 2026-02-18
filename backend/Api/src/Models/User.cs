@@ -12,6 +12,11 @@ namespace Api.Models
         public string? Token { get; set; }
         public string? WsConn { get; set; }
         
+        // GitHub OAuth
+        public long? GitHubId { get; set; }
+        public string? GitHubLogin { get; set; }
+        public string? AvatarUrl { get; set; }
+        
         // Foreign Key
         public int PermissionId { get; set; }
         

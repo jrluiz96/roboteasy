@@ -33,7 +33,7 @@ public class UserService : IUserService
         var user = new User
         {
             Name = request.Name,
-            Username = request.Username,
+            Username = request.Username.ToLowerInvariant(),
             PasswordHash = _passwordHasher.Hash(request.Password),
             PermissionId = request.PermissionId
         };
@@ -48,7 +48,7 @@ public class UserService : IUserService
         if (user == null) return null;
 
         if (request.Name != null) user.Name = request.Name;
-        if (request.Username != null) user.Username = request.Username;
+        if (request.Username != null) user.Username = request.Username.ToLowerInvariant();
         if (request.Password != null) user.PasswordHash = _passwordHasher.Hash(request.Password);
         if (request.PermissionId != null) user.PermissionId = request.PermissionId.Value;
 
