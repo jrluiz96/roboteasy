@@ -1,5 +1,12 @@
 import { api } from './api'
 
+export interface View {
+  id: number
+  name: string
+  route: string
+  icon: string
+}
+
 export interface Session {
   id: number
   name: string
@@ -9,6 +16,7 @@ export interface Session {
   gitHubLogin: string | null
   permissionId: number
   sessionAt: string | null
+  views: View[]
 }
 
 export const sessionService = {

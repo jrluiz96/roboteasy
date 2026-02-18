@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\C#\\roboteasy\\backend\\Api\\Api.csproj": {}
+    "C:\\Users\\m_jr_\\OneDrive\\Documentos\\roboteasy\\backend\\Api\\Api.csproj": {}
   },
   "projects": {
-    "C:\\C#\\roboteasy\\backend\\Api\\Api.csproj": {
+    "C:\\Users\\m_jr_\\OneDrive\\Documentos\\roboteasy\\backend\\Api\\Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\C#\\roboteasy\\backend\\Api\\Api.csproj",
+        "projectUniqueName": "C:\\Users\\m_jr_\\OneDrive\\Documentos\\roboteasy\\backend\\Api\\Api.csproj",
         "projectName": "Api",
-        "projectPath": "C:\\C#\\roboteasy\\backend\\Api\\Api.csproj",
+        "projectPath": "C:\\Users\\m_jr_\\OneDrive\\Documentos\\roboteasy\\backend\\Api\\Api.csproj",
         "packagesPath": "C:\\Users\\m_jr_\\.nuget\\packages\\",
-        "outputPath": "C:\\C#\\roboteasy\\backend\\Api\\obj\\",
+        "outputPath": "C:\\Users\\m_jr_\\OneDrive\\Documentos\\roboteasy\\backend\\Api\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\m_jr_\\AppData\\Roaming\\NuGet\\NuGet.Config"

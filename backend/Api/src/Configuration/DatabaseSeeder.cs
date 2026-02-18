@@ -57,5 +57,48 @@ public static class DatabaseSeeder
             });
             await context.SaveChangesAsync();
         }
+
+        // Seed de Views
+        if (!await context.Views.AnyAsync())
+        {
+            context.Views.AddRange(
+                new View { Name = "home", Route = "/session/home", Icon = "home" },
+                new View { Name = "customer_service", Route = "/session/customer-service", Icon = "support_agent" },
+                new View { Name = "clients", Route = "/session/clients", Icon = "person" },
+                new View { Name = "history", Route = "/session/history", Icon = "history" },
+                new View { Name = "users", Route = "/session/users", Icon = "group" },
+                new View { Name = "monitoring", Route = "/session/monitoring", Icon = "analytics" }
+            );
+            await context.SaveChangesAsync();
+        }
+
+        // Seed de PermissionView (relações entre permissões e views)
+        if (!await context.PermissionViews.AnyAsync())
+        {
+            var adminPermission = await context.Permissions.FirstAsync(p => p.Name == "admin");
+            var operatorPermission = await context.Permissions.FirstAsync(p => p.Name == "operator");
+
+            var homeView = await context.Views.FirstAsync(v => v.Name == "home");
+            var customerServiceView = await context.Views.FirstAsync(v => v.Name == "customer_service");
+            var clientsView = await context.Views.FirstAsync(v => v.Name == "clients");
+            var historyView = await context.Views.FirstAsync(v => v.Name == "history");
+            var usersView = await context.Views.FirstAsync(v => v.Name == "users");
+            var monitoringView = await context.Views.FirstAsync(v => v.Name == "monitoring");
+
+            context.PermissionViews.AddRange(
+                // Views acessíveis por todas as permissões (admin e operator)
+                new PermissionView { PermissionId = adminPermission.Id, ViewId = homeView.Id },
+                new PermissionView { PermissionId = operatorPermission.Id, ViewId = homeView.Id },
+                new PermissionView { PermissionId = adminPermission.Id, ViewId = customerServiceView.Id },
+                new PermissionView { PermissionId = operatorPermission.Id, ViewId = customerServiceView.Id },
+
+                // Views acessíveis apenas por admin
+                new PermissionView { PermissionId = adminPermission.Id, ViewId = clientsView.Id },
+                new PermissionView { PermissionId = adminPermission.Id, ViewId = historyView.Id },
+                new PermissionView { PermissionId = adminPermission.Id, ViewId = usersView.Id },
+                new PermissionView { PermissionId = adminPermission.Id, ViewId = monitoringView.Id }
+            );
+            await context.SaveChangesAsync();
+        }
     }
 }

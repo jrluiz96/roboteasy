@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "rtGpSU28VnA=",
+  "dgSpecHash": "ZqsJ7gaHAL4=",
   "success": true,
-  "projectFilePath": "C:\\C#\\roboteasy\\backend\\Api\\Api.csproj",
+  "projectFilePath": "C:\\Users\\m_jr_\\OneDrive\\Documentos\\roboteasy\\backend\\Api\\Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\m_jr_\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\m_jr_\\.nuget\\packages\\konscious.security.cryptography.argon2\\1.3.1\\konscious.security.cryptography.argon2.1.3.1.nupkg.sha512",
