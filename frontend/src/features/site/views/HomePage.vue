@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import ChatWidget from '@/features/site/components/ChatWidget.vue'
 
 const router = useRouter()
 
@@ -163,5 +164,9 @@ function goToLogin() {
         </p>
       </div>
     </footer>
+
+    <!-- Chat Widget -->
+    <ChatWidget />
+
   </div>
 </template>

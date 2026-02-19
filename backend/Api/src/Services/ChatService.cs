@@ -8,18 +8,22 @@ namespace Api.Services;
 public class ChatService : IChatService
 {
     private readonly IClientRepository _clientRepository;
+    private readonly IConversationRepository _conversationRepository;
     private readonly IJwtService _jwtService;
 
-    public ChatService(IClientRepository clientRepository, IJwtService jwtService)
+    public ChatService(IClientRepository clientRepository, IConversationRepository conversationRepository, IJwtService jwtService)
     {
         _clientRepository = clientRepository;
+        _conversationRepository = conversationRepository;
         _jwtService = jwtService;
     }
 
     public async Task<ChatStartResponse> StartAsync(ChatStartRequest request)
     {
-        // Busca cliente pelo email ou cria um novo
-        var client = await _clientRepository.GetByEmailAsync(request.Email);
+        // Busca cliente pelo email (se informado) ou cria um novo
+        Client? client = null;
+        if (!string.IsNullOrWhiteSpace(request.Email))
+            client = await _clientRepository.GetByEmailAsync(request.Email);
 
         if (client == null)
         {
@@ -28,18 +32,35 @@ public class ChatService : IChatService
                 Name = request.Name,
                 Email = request.Email,
                 Phone = request.Phone,
+                Cpf = request.Cpf,
                 CreatedAt = DateTime.UtcNow
             });
         }
         else
         {
-            // Atualiza nome e telefone caso tenha mudado
             client.Name = request.Name;
             if (request.Phone != null) client.Phone = request.Phone;
+            if (request.Cpf != null) client.Cpf = request.Cpf;
+            await _clientRepository.UpdateAsync(client);
         }
+
+        // Retoma conversa aberta ou cria uma nova
+        var existingConversation = await _conversationRepository.GetOpenByClientIdAsync(client.Id);
+        var isNew = existingConversation == null;
+
+        var conversation = existingConversation ?? await _conversationRepository.CreateAsync(new Conversation
+        {
+            ClientId = client.Id,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        var messages = conversation.Messages
+            .Select(m => new MessageResponse(m.Id, m.ConversationId, m.UserId, m.ClientId, m.Type, m.Content, m.FileUrl, m.CreatedAt))
+            .ToList()
+            .AsReadOnly();
 
         var clientToken = _jwtService.GenerateClientToken(client.Id);
 
-        return new ChatStartResponse(client.Id, clientToken);
+        return new ChatStartResponse(client.Id, clientToken, conversation.Id, isNew, messages);
     }
 }

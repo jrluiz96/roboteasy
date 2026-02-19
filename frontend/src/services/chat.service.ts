@@ -4,8 +4,11 @@ import {
   HubConnectionState,
   LogLevel,
 } from '@microsoft/signalr'
+import { api } from './api'
 
-const HUB_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8080') + '/hubs/chat'
+// Em dev o Vite proxia /hubs → localhost:8080 (evita CORS).
+// Em prod, defina VITE_HUB_URL com a URL completa do hub.
+const HUB_URL = import.meta.env.VITE_HUB_URL || '/hubs/chat'
 
 // ── Event name constants (must match backend ChatEvents.cs) ──────────────────
 
@@ -50,10 +53,35 @@ export interface UserStatusPayload {
   connectionId?: string
 }
 
+// ── REST ─────────────────────────────────────────────────────────────────────
+
+export interface ChatStartRequest {
+  name: string
+  email?: string
+  phone?: string
+  cpf?: string
+}
+
+export interface ChatStartResponse {
+  clientId: number
+  clientToken: string
+  conversationId: number
+  isNewConversation: boolean
+  messages: ChatMessage[]
+}
+
 // ── ChatService ───────────────────────────────────────────────────────────────
 
 class ChatService {
   private connection: HubConnection | null = null
+
+  // ── REST ───────────────────────────────────────────────────────────────────
+
+  async start(data: ChatStartRequest): Promise<ChatStartResponse> {
+    const response = await api.post<ChatStartResponse>('/api/v1/open/chat/start', data)
+    if (response.code === 200 && response.data) return response.data
+    throw new Error(response.message || 'Erro ao iniciar atendimento')
+  }
 
   // ── Connection ─────────────────────────────────────────────────────────────
 
@@ -173,7 +201,8 @@ class ChatService {
     await this.connection.invoke(method, ...args)
   }
 
-  private _on(event: string, handler: (...args: unknown[]) => void): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private _on(event: string, handler: (...args: any[]) => void): void {
     if (!this.connection) {
       console.warn(`[ChatService] on('${event}') called before connect().`)
       return

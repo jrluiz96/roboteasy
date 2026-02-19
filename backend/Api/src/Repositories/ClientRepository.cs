@@ -31,6 +31,14 @@ public class ClientRepository : IClientRepository
         return client;
     }
 
+    public async Task<Client> UpdateAsync(Client client)
+    {
+        client.UpdatedAt = DateTime.UtcNow;
+        _context.Clients.Update(client);
+        await _context.SaveChangesAsync();
+        return client;
+    }
+
     public async Task<Client> UpdateWsConnAsync(long id, string? connectionId)
     {
         var client = await _context.Clients.FindAsync(id)

@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IPermissionViewRepository, PermissionViewRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
+        services.AddScoped<IConversationRepository, ConversationRepository>();
 
         // Services
         services.AddScoped<IUserService, UserService>();

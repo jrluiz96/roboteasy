@@ -74,9 +74,9 @@ public class OpenController : ControllerBase
     [HttpPost("chat/start")]
     public async Task<IActionResult> ChatStart([FromBody] ChatStartRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Email))
+        if (string.IsNullOrWhiteSpace(request.Name))
         {
-            var error = ApiResponse<object>.BadRequest("Nome e email são obrigatórios");
+            var error = ApiResponse<object>.BadRequest("Nome é obrigatório");
             return StatusCode(error.Code, error);
         }
 
