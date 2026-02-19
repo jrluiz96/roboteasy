@@ -16,7 +16,9 @@ public class UserRepository : IUserRepository
     public async Task<IEnumerable<User>> GetAllAsync()
     {
         return await _context.Users
+            .IgnoreQueryFilters()  // Inclui usuários deletados
             .Include(u => u.Permission)
+            .OrderBy(u => u.Name)
             .ToListAsync();
     }
 
@@ -53,7 +55,27 @@ public class UserRepository : IUserRepository
         var user = await _context.Users.FindAsync(id);
         if (user == null) return false;
 
-        _context.Users.Remove(user);
+        // Soft delete - apenas marca como deletado
+        user.DeletedAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+        
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> RestoreAsync(int id)
+    {
+        var user = await _context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == id);
+        
+        if (user == null || user.DeletedAt == null) return false;
+
+        user.DeletedAt = null;
+        user.UpdatedAt = DateTime.UtcNow;
+        
+        _context.Users.Update(user);
         await _context.SaveChangesAsync();
         return true;
     }

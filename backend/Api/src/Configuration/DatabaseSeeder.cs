@@ -62,12 +62,12 @@ public static class DatabaseSeeder
         if (!await context.Views.AnyAsync())
         {
             context.Views.AddRange(
-                new View { Name = "home", Route = "/session/home", Icon = "home" },
-                new View { Name = "customer_service", Route = "/session/customer-service", Icon = "support_agent" },
-                new View { Name = "clients", Route = "/session/clients", Icon = "person" },
-                new View { Name = "history", Route = "/session/history", Icon = "history" },
-                new View { Name = "users", Route = "/session/users", Icon = "group" },
-                new View { Name = "monitoring", Route = "/session/monitoring", Icon = "analytics" }
+                new View { Name = "home", Route = "/session/home", Icon = "fa-house" },
+                new View { Name = "customer_service", Route = "/session/customer-service", Icon = "fa-headset" },
+                new View { Name = "clients", Route = "/session/clients", Icon = "fa-user" },
+                new View { Name = "history", Route = "/session/history", Icon = "fa-clock-rotate-left" },
+                new View { Name = "users", Route = "/session/users", Icon = "fa-users" },
+                new View { Name = "monitoring", Route = "/session/monitoring", Icon = "fa-chart-line" }
             );
             await context.SaveChangesAsync();
         }

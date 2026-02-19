@@ -8,12 +8,29 @@ namespace Api.Services;
 public class UserService : IUserService
 {
     private readonly IUserRepository _repository;
+    private readonly IPermissionRepository _permissionRepository;
     private readonly IPasswordHasher _passwordHasher;
 
-    public UserService(IUserRepository repository, IPasswordHasher passwordHasher)
+    public UserService(IUserRepository repository, IPermissionRepository permissionRepository, IPasswordHasher passwordHasher)
     {
         _repository = repository;
+        _permissionRepository = permissionRepository;
         _passwordHasher = passwordHasher;
+    }
+
+    public async Task<UserOptionsResponse> GetOptionsAsync()
+    {
+        var permissions = await _permissionRepository.GetAllAsync();
+        var permissionOptions = permissions.Select(p => new PermissionOptionResponse
+        {
+            Id = p.Id,
+            Name = p.Name
+        }).ToList();
+
+        return new UserOptionsResponse
+        {
+            Permissions = permissionOptions
+        };
     }
 
     public async Task<IEnumerable<UserResponse>> GetAllAsync()
@@ -61,6 +78,11 @@ public class UserService : IUserService
         return await _repository.DeleteAsync(id);
     }
 
+    public async Task<bool> RestoreAsync(int id)
+    {
+        return await _repository.RestoreAsync(id);
+    }
+
     private static UserResponse ToResponse(User user) =>
-        new(user.Id, user.Name, user.Username, user.PermissionId, user.Permission?.Name, user.CreatedAt, user.SessionAt);
+        new(user.Id, user.Name, user.Username, user.Email, user.AvatarUrl, user.GitHubLogin, user.PermissionId, user.Permission?.Name, user.CreatedAt, user.SessionAt, user.DeletedAt);
 }

@@ -37,10 +37,10 @@ public class SessionValidationMiddleware
                         .AsNoTracking()
                         .FirstOrDefaultAsync(u => u.Id == userId);
 
-                    // Verifica se o usuário existe e se o session_token bate
-                    if (user == null || user.Token != sessionTokenClaim.Value)
+                    // Verifica se o usuário existe, não foi deletado e se o session_token bate
+                    if (user == null || user.DeletedAt != null || user.Token != sessionTokenClaim.Value)
                     {
-                        await WriteUnauthorizedResponse(context, "Sessão inválida ou expirada");
+                        await WriteUnauthorizedResponse(context, "Session invalid or expired");
                         return;
                     }
 

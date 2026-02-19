@@ -1,6 +1,7 @@
 using Api.Contracts.Requests;
 using Api.Contracts.Responses;
 using Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -8,6 +9,7 @@ namespace Api.Controllers;
 [ApiController]
 [Route("api/v1/users")]
 [Tags("Users")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -17,11 +19,27 @@ public class UsersController : ControllerBase
         _userService = userService;
     }
 
+    /// <summary>
+    /// Retorna as opcoes para criacao de usuarios (permissoes disponíveis)
+    /// </summary>
+    [HttpGet("options")]
+    public async Task<IActionResult> GetOptions()
+    {
+        var options = await _userService.GetOptionsAsync();
+        var response = ApiResponse<UserOptionsResponse>.Success(options, "Options retrieved successfully");
+        return StatusCode(response.Code, response);
+    }
+
+    /// <summary>
+    /// Lista todos os usuários em ordem alfabética
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var users = await _userService.GetAllAsync();
-        var response = ApiResponse<IEnumerable<UserResponse>>.Success(users, "Usuários listados com sucesso");
+        // Garantir ordem ascendente por nome
+        var orderedUsers = users.OrderBy(u => u.Name);
+        var response = ApiResponse<IEnumerable<UserResponse>>.Success(orderedUsers, "Users listed successfully");
         return StatusCode(response.Code, response);
     }
 
@@ -31,11 +49,11 @@ public class UsersController : ControllerBase
         var user = await _userService.GetByIdAsync(id);
         if (user == null)
         {
-            var error = ApiResponse<object>.NotFound("Usuário não encontrado");
+            var error = ApiResponse<object>.NotFound("User not found");
             return StatusCode(error.Code, error);
         }
 
-        var response = ApiResponse<UserResponse>.Success(user, "Usuário encontrado");
+        var response = ApiResponse<UserResponse>.Success(user, "User found");
         return StatusCode(response.Code, response);
     }
 
@@ -43,7 +61,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
     {
         var user = await _userService.CreateAsync(request);
-        var response = ApiResponse<UserResponse>.Created(user, "Usuário criado com sucesso");
+        var response = ApiResponse<UserResponse>.Created(user, "User created successfully");
         return StatusCode(response.Code, response);
     }
 
@@ -53,11 +71,11 @@ public class UsersController : ControllerBase
         var user = await _userService.UpdateAsync(id, request);
         if (user == null)
         {
-            var error = ApiResponse<object>.NotFound("Usuário não encontrado");
+            var error = ApiResponse<object>.NotFound("User not found");
             return StatusCode(error.Code, error);
         }
 
-        var response = ApiResponse<UserResponse>.Success(user, "Usuário atualizado com sucesso");
+        var response = ApiResponse<UserResponse>.Success(user, "User updated successfully");
         return StatusCode(response.Code, response);
     }
 
@@ -67,11 +85,25 @@ public class UsersController : ControllerBase
         var deleted = await _userService.DeleteAsync(id);
         if (!deleted)
         {
-            var error = ApiResponse<object>.NotFound("Usuário não encontrado");
+            var error = ApiResponse<object>.NotFound("User not found");
             return StatusCode(error.Code, error);
         }
 
-        var response = ApiResponse.Ok("Usuário removido com sucesso");
+        var response = ApiResponse.Ok("User deleted successfully");
+        return StatusCode(response.Code, response);
+    }
+
+    [HttpPost("{id:int}/restore")]
+    public async Task<IActionResult> Restore(int id)
+    {
+        var restored = await _userService.RestoreAsync(id);
+        if (!restored)
+        {
+            var error = ApiResponse<object>.NotFound("User not found or already active");
+            return StatusCode(error.Code, error);
+        }
+
+        var response = ApiResponse.Ok("User restored successfully");
         return StatusCode(response.Code, response);
     }
 }
