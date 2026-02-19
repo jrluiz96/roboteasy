@@ -28,7 +28,7 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     children: [
       {
-        path: '',
+        path: 'home',
         name: 'home-session',
         component: () => import('@/features/session/views/HomePage.vue')
       },

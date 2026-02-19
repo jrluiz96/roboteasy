@@ -15,7 +15,7 @@ async function handleLogin(credentials: { username: string; password: string }) 
   loading.value = false
   
   if (success) {
-    router.push('/session')
+    router.push('/session/home')
   }
 }
 
