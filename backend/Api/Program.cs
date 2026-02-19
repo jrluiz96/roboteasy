@@ -1,4 +1,5 @@
 using Api.Configuration;
+using Api.Hubs;
 using Api.Middleware;
 using Microsoft.OpenApi.Models;
 
@@ -9,6 +10,30 @@ builder.Services.AddApplicationServices(builder.Configuration);
 
 // Controllers
 builder.Services.AddControllers();
+
+// SignalR
+builder.Services.AddSignalR();
+
+// CORS para WebSocket (SignalR não aceita wildcard com credentials)
+var corsOrigins = builder.Configuration["AppSettings:CorsOrigins"] ?? "*";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SignalRPolicy", policy =>
+    {
+        if (corsOrigins == "*")
+        {
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        }
+        else
+        {
+            var origins = corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            policy.WithOrigins(origins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+    });
+});
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -50,6 +75,7 @@ var app = builder.Build();
 
 // CORS (antes de tudo)
 app.UseCorsMiddleware();
+app.UseCors("SignalRPolicy");
 
 // Middleware de erro
 app.UseErrorHandling();
@@ -68,6 +94,9 @@ app.UseAuthorization();
 
 // Controllers
 app.MapControllers();
+
+// SignalR Hubs
+app.MapHub<ChatHub>("/hubs/chat");
 
 // Migrate database e seed inicial
 await DatabaseSeeder.SeedAsync(app.Services);

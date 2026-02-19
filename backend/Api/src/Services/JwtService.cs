@@ -29,6 +29,16 @@ public interface IJwtService
     /// Retorna a data de expiração do token
     /// </summary>
     DateTime GetExpirationDate();
+
+    /// <summary>
+    /// Gera um JWT de curta duração para identificar um cliente no WebSocket
+    /// </summary>
+    string GenerateClientToken(long clientId);
+
+    /// <summary>
+    /// Valida um client token e retorna o clientId, ou null se inválido
+    /// </summary>
+    long? ValidateClientToken(string token);
 }
 
 public class JwtService : IJwtService
@@ -116,5 +126,61 @@ public class JwtService : IJwtService
     public DateTime GetExpirationDate()
     {
         return DateTime.UtcNow.AddHours(_settings.JwtExpirationHours);
+    }
+
+    public string GenerateClientToken(long clientId)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.JwtSecret));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim("client_id", clientId.ToString()),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        };
+
+        // Token de 24 horas para a sessão do cliente
+        var token = new JwtSecurityToken(
+            issuer: "roboteasy",
+            audience: "roboteasy-client",
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(24),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public long? ValidateClientToken(string token)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.JwtSecret));
+
+            var parameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidIssuer = "roboteasy",
+                ValidAudience = "roboteasy-client",
+                IssuerSigningKey = key,
+                ClockSkew = TimeSpan.Zero
+            };
+
+            var principal = handler.ValidateToken(token, parameters, out _);
+            var clientIdClaim = principal.FindFirst("client_id");
+
+            if (clientIdClaim == null || !long.TryParse(clientIdClaim.Value, out var clientId))
+                return null;
+
+            return clientId;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

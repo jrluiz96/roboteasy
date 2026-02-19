@@ -29,10 +29,12 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IPermissionViewRepository, PermissionViewRepository>();
+        services.AddScoped<IClientRepository, ClientRepository>();
 
         // Services
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISessionService, SessionService>();
+        services.AddScoped<IChatService, ChatService>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddSingleton<IJwtService, JwtService>();
         services.AddHttpClient<IGitHubService, GitHubService>();
@@ -73,6 +75,21 @@ public static class DependencyInjection
                 ValidAudience = "roboteasy",
                 IssuerSigningKey = new SymmetricSecurityKey(key),
                 ClockSkew = TimeSpan.Zero
+            };
+
+            // SignalR: WebSocket não suporta headers, token vem via query string
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
             };
         });
         

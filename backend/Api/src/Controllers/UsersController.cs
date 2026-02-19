@@ -93,7 +93,7 @@ public class UsersController : ControllerBase
         return StatusCode(response.Code, response);
     }
 
-    [HttpPost("{id:int}/restore")]
+    [HttpPatch("{id:int}/restore")]
     public async Task<IActionResult> Restore(int id)
     {
         var restored = await _userService.RestoreAsync(id);

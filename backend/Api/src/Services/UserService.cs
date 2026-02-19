@@ -68,6 +68,7 @@ public class UserService : IUserService
         if (request.Username != null) user.Username = request.Username.ToLowerInvariant();
         if (request.Password != null) user.PasswordHash = _passwordHasher.Hash(request.Password);
         if (request.PermissionId != null) user.PermissionId = request.PermissionId.Value;
+        if (request.Email != null) user.Email = request.Email;
 
         await _repository.UpdateAsync(user);
         return ToResponse(user);

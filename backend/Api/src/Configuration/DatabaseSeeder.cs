@@ -27,7 +27,7 @@ public static class DatabaseSeeder
         }
 
         // Seed de usuário admin
-        if (!await context.Users.AnyAsync(u => u.Username == "admin.master"))
+        if (!await context.Users.IgnoreQueryFilters().AnyAsync(u => u.Username == "admin.master"))
         {
             var adminPermission = await context.Permissions.FirstAsync(p => p.Name == "admin");
             
@@ -43,7 +43,7 @@ public static class DatabaseSeeder
         }
 
         // Seed de usuário operador
-        if (!await context.Users.AnyAsync(u => u.Username == "francisco.luiz"))
+        if (!await context.Users.IgnoreQueryFilters().AnyAsync(u => u.Username == "francisco.luiz"))
         {
             var operatorPermission = await context.Permissions.FirstAsync(p => p.Name == "operator");
             

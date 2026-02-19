@@ -29,32 +29,33 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        name: 'dashboard',
-        component: () => import('@/features/session/views/DashboardPage.vue')
+        name: 'home-session',
+        component: () => import('@/features/session/views/HomePage.vue')
       },
       {
-        path: 'robots',
-        name: 'robots',
-        component: () => import('@/features/session/views/PlaceholderPage.vue'),
-        props: { title: 'Robôs', description: 'Gerencie seus robôs de automação.' }
+        path: 'users',
+        name: 'users',
+        component: () => import('@/features/session/views/UsersPage.vue')
       },
       {
         path: 'clients',
         name: 'clients',
-        component: () => import('@/features/session/views/PlaceholderPage.vue'),
-        props: { title: 'Clientes', description: 'Cadastro e gestão de clientes.' }
+        component: () => import('@/features/session/views/ClientsPage.vue')
       },
       {
-        path: 'reports',
-        name: 'reports',
-        component: () => import('@/features/session/views/PlaceholderPage.vue'),
-        props: { title: 'Relatórios', description: 'Visualize relatórios e métricas.' }
+        path: 'history',
+        name: 'history',
+        component: () => import('@/features/session/views/HistoryPage.vue')
       },
       {
-        path: 'settings',
-        name: 'settings',
-        component: () => import('@/features/session/views/PlaceholderPage.vue'),
-        props: { title: 'Configurações', description: 'Configure seu sistema.' }
+        path: 'monitoring',
+        name: 'monitoring',
+        component: () => import('@/features/session/views/MonitoringPage.vue')
+      },
+      {
+        path: 'customer-service',
+        name: 'customer-service',
+        component: () => import('@/features/session/views/CustomerServicePage.vue')
       }
     ]
   },
@@ -95,11 +96,22 @@ router.beforeEach(async (to, _from, next) => {
       next({ name: 'login' })
       return
     }
+    
+    // Verifica se o usuário tem acesso à rota pela lista de views
+    const userViews = authStore.user?.views
+    if (userViews && userViews.length > 0 && to.path !== '/session') {
+      const hasAccess = userViews.some(v => v.route === to.path)
+      if (!hasAccess) {
+        toastStore.error('Acesso negado. Você não tem permissão para acessar esta página.')
+        next({ name: 'home-session' })
+        return
+      }
+    }
   }
   
   // Usuário logado tentando acessar login
   if (to.name === 'login' && hasToken) {
-    next({ name: 'dashboard' })
+    next({ name: 'home' })
     return
   }
   

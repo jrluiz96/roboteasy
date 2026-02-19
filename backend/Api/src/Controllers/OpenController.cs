@@ -12,11 +12,13 @@ public class OpenController : ControllerBase
 {
     private readonly ISessionService _sessionService;
     private readonly IGitHubService _gitHubService;
+    private readonly IChatService _chatService;
 
-    public OpenController(ISessionService sessionService, IGitHubService gitHubService)
+    public OpenController(ISessionService sessionService, IGitHubService gitHubService, IChatService chatService)
     {
         _sessionService = sessionService;
         _gitHubService = gitHubService;
+        _chatService = chatService;
     }
 
     [HttpPost("login")]
@@ -64,5 +66,22 @@ public class OpenController : ControllerBase
     public IActionResult Swagger()
     {
         return Redirect("/swagger");
+    }
+
+    /// <summary>
+    /// Cria ou busca um cliente pelo email e retorna o token de acesso ao WebSocket
+    /// </summary>
+    [HttpPost("chat/start")]
+    public async Task<IActionResult> ChatStart([FromBody] ChatStartRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Email))
+        {
+            var error = ApiResponse<object>.BadRequest("Nome e email são obrigatórios");
+            return StatusCode(error.Code, error);
+        }
+
+        var result = await _chatService.StartAsync(request);
+        var response = ApiResponse<ChatStartResponse>.Success(result, "Chat iniciado com sucesso");
+        return StatusCode(response.Code, response);
     }
 }

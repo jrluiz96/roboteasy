@@ -4,6 +4,14 @@ export interface User {
   email: string
   name?: string
   avatarUrl?: string
+  permissionName?: string
+  permissionId?: number
+  views?: Array<{
+    id: number
+    name: string
+    route: string
+    icon: string
+  }>
 }
 
 export interface LoginCredentials {

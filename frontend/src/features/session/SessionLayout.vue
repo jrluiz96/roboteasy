@@ -11,7 +11,7 @@ const sidebarCollapsed = ref(false)
 
 // Menu items dinâmicos vindos da API via authStore
 const menuItems = computed(() => {
-  return authStore.currentUser?.views?.map(view => ({
+  return authStore.currentUser?.views?.map((view: any) => ({
     id: view.id,
     name: getViewDisplayName(view.name),
     path: view.route,
@@ -67,7 +67,7 @@ function toggleSidebar() {
       <div class="h-16 flex items-center justify-between px-4 border-b border-gray-800">
         <div class="flex items-center gap-2">
           <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex-shrink-0"></div>
-          <span v-if="!sidebarCollapsed" class="text-lg font-bold">MeetConnect</span>
+          <span v-if="!sidebarCollapsed" class="text-lg font-bold">RobotEasy</span>
         </div>
         <button
           @click="toggleSidebar"
@@ -124,7 +124,7 @@ function toggleSidebar() {
       <!-- Header -->
       <header class="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
         <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
-          {{ menuItems.find(i => isActive(i.path))?.name || 'Sistema' }}
+          {{ menuItems.find((i: any) => isActive(i.path))?.name || 'Sistema' }}
         </h1>
         <div class="flex items-center gap-4">
           <span class="text-sm text-gray-500 dark:text-gray-400">
