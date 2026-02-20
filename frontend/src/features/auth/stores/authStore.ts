@@ -39,10 +39,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function loginWithGitHub() {
-    window.location.href = '/api/v1/open/github/login'
-  }
-
   function logout() {
     logoutWithMessage()
   }
@@ -84,7 +80,6 @@ export const useAuthStore = defineStore('auth', () => {
     currentUser,
     // Actions
     login,
-    loginWithGitHub,
     logout,
     checkAuth
   }

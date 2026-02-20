@@ -3,7 +3,7 @@
 ## Requisitos
 
 - Node.js 20+
-- npm ou pnpm
+- npm
 
 ## Comandos
 
@@ -13,7 +13,7 @@ npm install
 
 # Servidor de desenvolvimento (hot reload)
 npm run dev
-# Acesse: http://localhost:5173
+# Acesse: http://localhost:3000
 
 # Build para produção
 npm run build
@@ -36,6 +36,8 @@ VITE_API_URL=https://api.roboteasy.com
 ```
 
 > Prefixo `VITE_` é obrigatório para variáveis expostas ao frontend.
+
+> Em desenvolvimento, o Vite proxy encaminha `/api/*` e `/hubs/*` para `http://localhost:8080` automaticamente (configurado em `vite.config.ts`), então `VITE_API_URL` pode ser omitido.
 
 ## Estrutura de Componentes
 
@@ -66,7 +68,7 @@ function increment() {
 ### Convenções de Nomenclatura
 
 | Tipo | Padrão | Exemplo |
-|------|--------|---------|
+|---|---|---|
 | Componentes | PascalCase | `LoginPage.vue` |
 | Stores | camelCase + use | `useAuthStore` |
 | Services | camelCase | `authService` |
@@ -74,7 +76,7 @@ function increment() {
 
 ## Tailwind CSS 4
 
-O projeto usa Tailwind 4 com integração Vite nativa:
+O projeto usa Tailwind CSS 4 com integração Vite nativa:
 
 ```typescript
 // vite.config.ts
@@ -139,3 +141,26 @@ import { api } from '@/services/api'
    export { useMinhaStore } from './stores/minhaStore'
    export type * from './types'
    ```
+
+## Dependências
+
+### Produção
+
+| Pacote | Versão | Uso |
+|---|---|---|
+| `vue` | ^3.5 | Framework reativo |
+| `vue-router` | ^4.6 | Roteamento SPA |
+| `pinia` | ^3.0 | State management |
+| `@microsoft/signalr` | ^10.0 | WebSocket (chat real-time) |
+| `@fortawesome/fontawesome-free` | ^7.2 | Ícones |
+
+### Desenvolvimento
+
+| Pacote | Versão | Uso |
+|---|---|---|
+| `vite` | ^7.3 | Build tool + dev server |
+| `typescript` | ~5.9 | Tipagem estática |
+| `tailwindcss` | ^4.1 | Estilização |
+| `@tailwindcss/vite` | ^4.1 | Plugin Vite para Tailwind |
+| `@vitejs/plugin-vue` | ^6.0 | Plugin Vite para Vue SFC |
+| `vue-tsc` | ^3.1 | Type checking de .vue |

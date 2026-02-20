@@ -11,13 +11,11 @@ namespace Api.Controllers;
 public class OpenController : ControllerBase
 {
     private readonly ISessionService _sessionService;
-    private readonly IGitHubService _gitHubService;
     private readonly IChatService _chatService;
 
-    public OpenController(ISessionService sessionService, IGitHubService gitHubService, IChatService chatService)
+    public OpenController(ISessionService sessionService, IChatService chatService)
     {
         _sessionService = sessionService;
-        _gitHubService = gitHubService;
         _chatService = chatService;
     }
 
@@ -32,33 +30,6 @@ public class OpenController : ControllerBase
         }
 
         var response = ApiResponse<LoginResponse>.Success(result, "Login realizado com sucesso");
-        return StatusCode(response.Code, response);
-    }
-
-    [HttpGet("github/login")]
-    public IActionResult GitHubLogin()
-    {
-        var url = _gitHubService.GetAuthorizationUrl();
-        return Redirect(url);
-    }
-
-    [HttpGet("github/callback")]
-    public async Task<IActionResult> GitHubCallback([FromQuery] string code)
-    {
-        if (string.IsNullOrEmpty(code))
-        {
-            var error = ApiResponse<object>.BadRequest("Código de autorização não fornecido");
-            return StatusCode(error.Code, error);
-        }
-
-        var result = await _gitHubService.HandleCallbackAsync(code);
-        if (result == null)
-        {
-            var error = ApiResponse<object>.Unauthorized("Falha na autenticação com GitHub");
-            return StatusCode(error.Code, error);
-        }
-
-        var response = ApiResponse<LoginResponse>.Success(result, "Login via GitHub realizado com sucesso");
         return StatusCode(response.Code, response);
     }
 

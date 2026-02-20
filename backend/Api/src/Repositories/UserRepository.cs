@@ -79,4 +79,13 @@ public class UserRepository : IUserRepository
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task UpdateWsConnAsync(int userId, string? connectionId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return;
+
+        user.WsConn = connectionId;
+        await _context.SaveChangesAsync();
+    }
 }

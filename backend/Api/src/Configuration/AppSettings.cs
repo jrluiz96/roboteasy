@@ -9,8 +9,3 @@ public class AppSettings
     public int JwtExpirationHours { get; set; }
     public string CorsOrigins { get; set; } = "*";
 }
-
-public class DatabaseSettings
-{
-    public string ConnectionString { get; set; } = string.Empty;
-}

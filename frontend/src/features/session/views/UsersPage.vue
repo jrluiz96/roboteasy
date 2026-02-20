@@ -71,8 +71,7 @@ const filteredUsers = computed(() => {
     filtered = filtered.filter(user =>
       user.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       user.username.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      user.gitHubLogin?.toLowerCase().includes(searchQuery.value.toLowerCase())
+      user.email.toLowerCase().includes(searchQuery.value.toLowerCase())
     )
   }
 
@@ -368,7 +367,7 @@ onMounted(async () => {
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Buscar por nome, usuário, email ou GitHub..."
+              placeholder="Buscar por nome, usuário ou email..."
               class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             />
           </div>
@@ -432,9 +431,6 @@ onMounted(async () => {
                   <div class="font-medium text-gray-900 dark:text-white">{{ user.name }}</div>
                   <div class="text-sm text-gray-500 dark:text-gray-400">@{{ user.username }}</div>
                   <div class="text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</div>
-                  <div v-if="user.gitHubLogin" class="text-sm text-purple-600 dark:text-purple-400">
-                    <i class="fab fa-github mr-1"></i>{{ user.gitHubLogin }}
-                  </div>
                 </div>
               </td>
               <td class="px-6 py-4">

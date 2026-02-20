@@ -24,10 +24,6 @@ export const authService = {
     return response.data
   },
 
-  getGitHubLoginUrl(): string {
-    return `${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/api/v1/open/github/login`
-  },
-
   logout(): void {
     api.setToken(null)
   },

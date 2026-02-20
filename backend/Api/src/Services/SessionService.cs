@@ -71,7 +71,6 @@ public class SessionService : ISessionService
             Username = user.Username,
             Email = user.Email,
             AvatarUrl = user.AvatarUrl,
-            GitHubLogin = user.GitHubLogin,
             PermissionId = user.PermissionId,
             SessionAt = user.SessionAt,
             Views = viewResponses

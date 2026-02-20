@@ -6,7 +6,6 @@ public record UserResponse(
     string Username,
     string? Email,
     string? AvatarUrl,
-    string? GitHubLogin,
     int PermissionId,
     string? PermissionName,
     DateTime CreatedAt,

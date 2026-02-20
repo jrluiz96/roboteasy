@@ -37,9 +37,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var users = await _userService.GetAllAsync();
-        // Garantir ordem ascendente por nome
-        var orderedUsers = users.OrderBy(u => u.Name);
-        var response = ApiResponse<IEnumerable<UserResponse>>.Success(orderedUsers, "Users listed successfully");
+        var response = ApiResponse<IEnumerable<UserResponse>>.Success(users, "Users listed successfully");
         return StatusCode(response.Code, response);
     }
 

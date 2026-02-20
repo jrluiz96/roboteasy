@@ -1,121 +1,261 @@
-# Serviços de API
+# Serviços e API
 
-## Cliente HTTP (api.ts)
+## Cliente HTTP — `api.ts`
 
-Classe `ApiClient` centraliza todas as requisições HTTP:
+Singleton `ApiClient` que encapsula todas as chamadas HTTP:
 
 ```typescript
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const api = new ApiClient()
 
-class ApiClient {
-  private baseUrl: string
-  private token: string | null
+api.setToken(token: string | null)  // salva/remove do localStorage
+api.getToken(): string | null
 
-  // Métodos HTTP
-  get<T>(endpoint: string): Promise<ApiResponse<T>>
-  post<T>(endpoint: string, body?): Promise<ApiResponse<T>>
-  put<T>(endpoint: string, body?): Promise<ApiResponse<T>>
-  patch<T>(endpoint: string, body?): Promise<ApiResponse<T>>
-  delete<T>(endpoint: string): Promise<ApiResponse<T>>
-
-  // Gerenciamento de token
-  setToken(token: string | null): void
-  getToken(): string | null
-}
+api.get<T>(endpoint): Promise<ApiResponse<T>>
+api.post<T>(endpoint, body?): Promise<ApiResponse<T>>
+api.put<T>(endpoint, body?): Promise<ApiResponse<T>>
+api.patch<T>(endpoint, body?): Promise<ApiResponse<T>>
+api.delete<T>(endpoint): Promise<ApiResponse<T>>
 ```
 
-### Configuração Base URL
+**Base URL**: `import.meta.env.VITE_API_URL || 'http://localhost:8080'`
 
-Definida via variável de ambiente:
+**Headers automáticos**: `Content-Type: application/json` + `Authorization: Bearer <token>` (quando autenticado).
 
-```bash
-# .env.local (desenvolvimento)
-VITE_API_URL=http://localhost:8080
-
-# .env.production
-VITE_API_URL=https://api.roboteasy.com
-```
-
-### Formato de Resposta
-
-Todas as respostas seguem o padrão:
+### Interface ApiResponse
 
 ```typescript
 interface ApiResponse<T> {
-  code: number      // Código HTTP
-  message: string   // Mensagem descritiva
-  data: T           // Dados retornados
-}
-
-interface ApiError {
   code: number
   message: string
-  data: null
+  data: T
 }
 ```
 
-## Serviços Disponíveis
-
-### authService (auth.service.ts)
+## Serviço de Autenticação — `auth.service.ts`
 
 ```typescript
-// Login com credenciais
-authService.login({ username, password })
-// Retorna: { token, user }
-
-// URL do OAuth GitHub
-authService.getGitHubLoginUrl()
-// Retorna: "http://localhost:8080/api/v1/open/github/login"
-
-// Logout local
-authService.logout()
-
-// Verifica se há token
-authService.isAuthenticated()
+authService.login(credentials: LoginRequest): Promise<LoginResponse>
+authService.logout(): void
+authService.isAuthenticated(): boolean
 ```
-
-### sessionService (session.service.ts)
-
-```typescript
-// Obtém dados da sessão atual
-sessionService.get()
-// Retorna: Session { id, name, username, email, avatarUrl, permissionId, ... }
-```
-
-### authApi (features/auth/services/authApi.ts)
-
-API específica da feature auth:
-
-```typescript
-// Login
-authApi.login({ username, password })
-
-// Dados do usuário logado
-authApi.me()
-
-// Logout (limpa token)
-authApi.logout()
-```
-
-## Endpoints Consumidos
 
 | Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| POST | `/api/v1/open/login` | Login com usuário/senha |
-| GET | `/api/v1/open/github/login` | Inicia OAuth GitHub |
-| GET | `/api/v1/session` | Dados da sessão atual |
-| GET | `/api/v1/session/me` | Dados do usuário logado |
-| POST | `/api/v1/session/logout` | Logout (invalida sessão) |
+|---|---|---|
+| `login` | `POST /api/v1/open/login` | Faz login e salva token |
+| `logout` | — | Remove token do localStorage |
+| `isAuthenticated` | — | Verifica se existe token |
 
-## Tratamento de Erros
+## Serviço de Sessão — `session.service.ts`
 
 ```typescript
-try {
-  const response = await api.post('/endpoint', data)
-  // Sucesso
-} catch (e: unknown) {
-  const error = e as ApiError
-  console.error(error.message)  // "Credenciais inválidas"
-  console.error(error.code)     // 401
+sessionService.get(): Promise<Session>
+```
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `get` | `GET /api/v1/session` | Retorna dados do usuário logado |
+
+### Interface Session
+
+```typescript
+interface Session {
+  id: number
+  name: string
+  username: string
+  email: string | null
+  avatarUrl: string | null
+  permissionId: number
+  sessionAt: string | null
+  views: View[]
+}
+
+interface View {
+  id: number
+  name: string
+  route: string
+  icon: string
+}
+```
+
+## Serviço de Usuários — `users.service.ts`
+
+```typescript
+usersService.getAll(): Promise<User[]>
+usersService.create(data: CreateUserRequest): Promise<User>
+usersService.update(id, data: UpdateUserRequest): Promise<User>
+usersService.delete(id): Promise<void>
+usersService.restore(id): Promise<void>
+usersService.getPermissions(): Promise<Permission[]>
+```
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `getAll` | `GET /api/v1/users` | Lista todos os usuários |
+| `create` | `POST /api/v1/users` | Cria novo usuário |
+| `update` | `PUT /api/v1/users/{id}` | Atualiza usuário |
+| `delete` | `DELETE /api/v1/users/{id}` | Desativa (soft delete) |
+| `restore` | `PATCH /api/v1/users/{id}/restore` | Reativa usuário |
+| `getPermissions` | `GET /api/v1/users/options` | Lista permissões |
+
+### Interfaces
+
+```typescript
+interface User {
+  id: number
+  name: string
+  username: string
+  email: string
+  avatarUrl: string | null
+  permissionId: number
+  permissionName: string | null
+  createdAt: string
+  sessionAt: string | null
+  deletedAt: string | null
+}
+
+interface Permission {
+  id: number
+  name: string
+}
+```
+
+## Serviço de Conversas — `conversation.service.ts`
+
+```typescript
+conversationService.getActive(): Promise<ConversationListItem[]>
+conversationService.getHistory(): Promise<ConversationListItem[]>
+conversationService.getById(id): Promise<ConversationDetail | null>
+conversationService.finish(id): Promise<void>
+conversationService.join(id): Promise<void>
+conversationService.leave(id): Promise<void>
+conversationService.invite(id, attendantId): Promise<void>
+```
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `getActive` | `GET /api/v1/conversations` | Lista conversas ativas |
+| `getHistory` | `GET /api/v1/conversations/history` | Lista conversas finalizadas |
+| `getById` | `GET /api/v1/conversations/{id}` | Detalhes de uma conversa |
+| `finish` | `POST /api/v1/conversations/{id}/finish` | Finaliza conversa |
+| `join` | `POST /api/v1/conversations/{id}/join` | Entra na conversa |
+| `leave` | `POST /api/v1/conversations/{id}/leave` | Sai da conversa |
+| `invite` | `POST /api/v1/conversations/{id}/invite/{attendantId}` | Convida atendente |
+
+### Interfaces
+
+```typescript
+interface ConversationListItem {
+  id: number
+  clientId: number
+  clientName: string
+  clientEmail: string | null
+  lastMessage: string | null
+  lastMessageAt: string | null
+  messageCount: number
+  createdAt: string
+  finishedAt: string | null
+  status: string
+}
+
+interface ConversationDetail {
+  id: number
+  clientId: number
+  clientName: string
+  clientEmail: string | null
+  clientPhone: string | null
+  createdAt: string
+  finishedAt: string | null
+  attendanceTime: number | null
+  status: string
+  messages: ConversationMessage[]
+  attendants: ConversationAttendant[]
+}
+
+interface ConversationAttendant {
+  userId: number
+  name: string
+  avatarUrl: string | null
+}
+```
+
+## Serviço de Chat — `chat.service.ts`
+
+Singleton `ChatService` que gerencia a conexão SignalR:
+
+### REST
+
+```typescript
+chatService.start(data: ChatStartRequest): Promise<ChatStartResponse>
+// POST /api/v1/open/chat/start
+```
+
+### Conexão WebSocket
+
+```typescript
+chatService.connectAsUser(accessToken: string): Promise<void>
+chatService.connectAsClient(clientToken: string): Promise<void>
+chatService.disconnect(): Promise<void>
+chatService.isConnected: boolean  // getter
+```
+
+**URL**: `VITE_API_URL/hubs/chat` com parâmetros `?access_token=` ou `?client_token=`
+
+### Métodos de Envio
+
+```typescript
+chatService.joinConversation(conversationId: number): Promise<void>
+chatService.leaveConversation(conversationId: number): Promise<void>
+chatService.sendMessage(conversationId: number, content: string): Promise<void>
+chatService.typing(conversationId: number): Promise<void>
+chatService.stopTyping(conversationId: number): Promise<void>
+chatService.markAsRead(conversationId: number, lastMessageId: number): Promise<void>
+```
+
+### Event Listeners
+
+```typescript
+chatService.onMessage(handler: (msg: ChatMessage) => void)
+chatService.onTyping(handler: (payload: TypingPayload) => void)
+chatService.onStopTyping(handler: (payload: TypingPayload) => void)
+chatService.onMessageRead(handler: (payload: MessageReadPayload) => void)
+chatService.onConversationFinished(handler: (data) => void)
+chatService.onConversationInvited(handler: (data) => void)
+chatService.onConversationCreated(handler: (data) => void)
+chatService.onAttendantLeft(handler: (data) => void)
+chatService.onUserOnline(handler: (payload: UserStatusPayload) => void)
+chatService.onUserOffline(handler: (payload: UserStatusPayload) => void)
+chatService.off(event: string)
+chatService.onReconnected(callback)
+chatService.onReconnecting(callback)
+chatService.onClose(callback)
+```
+
+### Interfaces do Chat
+
+```typescript
+interface ChatMessage {
+  id: number
+  conversationId: number
+  userId: number | null
+  clientId: number | null
+  type: number          // MessageType enum
+  content: string
+  fileUrl: string | null
+  createdAt: string
+}
+
+interface ChatStartRequest {
+  name: string
+  email?: string
+  phone?: string
+  cpf?: string
+}
+
+interface ChatStartResponse {
+  clientId: number
+  clientToken: string
+  conversationId: number
+  isNewConversation: boolean
+  messages: ChatMessage[]
 }
 ```

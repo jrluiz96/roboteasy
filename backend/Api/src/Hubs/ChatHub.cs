@@ -1,9 +1,7 @@
-using Api.Data;
 using Api.Models;
 using Api.Repositories;
 using Api.Services;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace Api.Hubs;
@@ -15,14 +13,16 @@ namespace Api.Hubs;
 /// </summary>
 public class ChatHub : Hub
 {
-    private readonly AppDbContext _context;
+    private readonly IUserRepository _userRepository;
     private readonly IClientRepository _clientRepository;
+    private readonly IMessageRepository _messageRepository;
     private readonly IJwtService _jwtService;
 
-    public ChatHub(AppDbContext context, IClientRepository clientRepository, IJwtService jwtService)
+    public ChatHub(IUserRepository userRepository, IClientRepository clientRepository, IMessageRepository messageRepository, IJwtService jwtService)
     {
-        _context = context;
+        _userRepository = userRepository;
         _clientRepository = clientRepository;
+        _messageRepository = messageRepository;
         _jwtService = jwtService;
     }
 
@@ -36,12 +36,7 @@ public class ChatHub : Hub
         if (userId != null)
         {
             // Atendente conectou
-            var user = await _context.Users.FindAsync(userId.Value);
-            if (user != null)
-            {
-                user.WsConn = Context.ConnectionId;
-                await _context.SaveChangesAsync();
-            }
+            await _userRepository.UpdateWsConnAsync(userId.Value, Context.ConnectionId);
 
             // Entra no grupo de atendentes para receber novos chats
             await Groups.AddToGroupAsync(Context.ConnectionId, "attendants");
@@ -74,12 +69,7 @@ public class ChatHub : Hub
 
         if (userId != null)
         {
-            var user = await _context.Users.FindAsync(userId.Value);
-            if (user != null)
-            {
-                user.WsConn = null;
-                await _context.SaveChangesAsync();
-            }
+            await _userRepository.UpdateWsConnAsync(userId.Value, null);
 
             await Clients.Others.SendAsync(ChatEvents.UserOffline, new
             {
@@ -115,10 +105,8 @@ public class ChatHub : Hub
 
         if (userId == null && clientId == null) return;
 
-        var conversation = await _context.Conversations
-            .FirstOrDefaultAsync(c => c.Id == conversationId && c.FinishedAt == null);
-
-        if (conversation == null) return;
+        var conversationExists = await _messageRepository.ConversationExistsAsync(conversationId);
+        if (!conversationExists) return;
 
         var message = new Message
         {
@@ -133,32 +121,22 @@ public class ChatHub : Hub
         // Atendente: embute o nome no conteúdo para evitar falsificação no cliente
         if (userId != null)
         {
-            var user = await _context.Users.FindAsync(userId.Value);
+            var user = await _userRepository.GetByIdAsync(userId.Value);
             if (user != null)
                 message.Content = $"{user.Username}\n{content}";
         }
 
-        _context.Messages.Add(message);
+        await _messageRepository.CreateAsync(message);
 
         // Se é atendente e ainda não tem UserConversation ativa, cria uma
         if (userId != null)
         {
-            var alreadyJoined = await _context.Set<UserConversation>()
-                .AnyAsync(uc => uc.ConversationId == conversationId
-                             && uc.UserId == userId.Value
-                             && uc.FinishedAt == null);
+            var alreadyJoined = await _messageRepository.IsUserInConversationAsync(conversationId, userId.Value);
             if (!alreadyJoined)
             {
-                _context.Set<UserConversation>().Add(new UserConversation
-                {
-                    UserId         = userId.Value,
-                    ConversationId = conversationId,
-                    StartedAt      = DateTime.UtcNow
-                });
+                await _messageRepository.AddUserToConversationAsync(conversationId, userId.Value);
             }
         }
-
-        await _context.SaveChangesAsync();
 
         await Clients.Group(ConversationGroup(conversationId))
             .SendAsync(ChatEvents.ReceiveMessage, new

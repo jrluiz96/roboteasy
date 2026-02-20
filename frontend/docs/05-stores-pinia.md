@@ -1,144 +1,146 @@
-# Gerenciamento de Estado (Pinia)
+# Stores Pinia
 
 ## Visão Geral
 
-O estado global é gerenciado pelo **Pinia 3**, usando a **Composition API** syntax (setup stores).
+O estado global é gerenciado pelo Pinia 3. As stores utilizam a Composition API (`setup stores` ou `defineStore` com options).
 
-## Configuração
+## authStore
+
+**Store ID**: `auth`
+
+**Localização**: `features/auth/stores/authStore.ts`
+
+### Estado
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `user` | `User \| null` | Dados do usuário logado |
+| `token` | `string \| null` | JWT (inicializado do localStorage) |
+| `loading` | `boolean` | Indica operação em andamento |
+| `error` | `string \| null` | Mensagem de erro |
+
+### Getters
+
+| Getter | Retorno | Descrição |
+|---|---|---|
+| `isAuthenticated` | `boolean` | `!!token` |
+| `currentUser` | `User \| null` | Referência ao user |
+
+### Actions
+
+#### `login(credentials: LoginCredentials): Promise<boolean>`
+
+1. Chama `authApi.login({ username, password })`
+2. Salva token no localStorage via `api.setToken()`
+3. Armazena user e token no state
+4. Exibe toast de sucesso
+5. Retorna `true` em caso de sucesso, `false` em caso de erro
+
+#### `logout(): void`
+
+1. Chama `authApi.logout()` (limpa localStorage)
+2. Limpa user e token do state
+3. Exibe toast "Sessão encerrada"
+
+#### `checkAuth(): Promise<{ valid: boolean; expired?: boolean }>`
+
+1. Chama `authApi.me()` → `GET /api/v1/session`
+2. Se sucesso → atualiza user, retorna `{ valid: true }`
+3. Se erro 401 → limpa sessão, retorna `{ valid: false, expired: true }`
+4. Se outro erro → retorna `{ valid: false }`
+
+### Tipo User
 
 ```typescript
-// stores/index.ts
-import { createPinia } from 'pinia'
-
-const pinia = createPinia()
-
-export default pinia
-export { useToastStore } from './toastStore'
+interface User {
+  id: number
+  username: string
+  email: string | null
+  name?: string
+  avatarUrl?: string
+  permissionName?: string
+  permissionId?: number
+  views?: { id: number; name: string; route: string; icon: string }[]
+}
 ```
 
+## toastStore
+
+**Store ID**: `toast`
+
+**Localização**: `stores/toastStore.ts`
+
+### Estado
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `toasts` | `Toast[]` | Lista de notificações ativas |
+
+### Actions
+
+| Action | Parâmetros | Descrição |
+|---|---|---|
+| `show` | `message, type?, duration?` | Exibe toast genérico |
+| `success` | `message, duration?` | Toast verde de sucesso |
+| `error` | `message, duration?` | Toast vermelho de erro |
+| `warning` | `message, duration?` | Toast amarelo de aviso |
+| `info` | `message, duration?` | Toast azul informativo |
+| `remove` | `id` | Remove toast específico |
+| `clear` | — | Remove todos os toasts |
+
+Todos os métodos de criação retornam o `id` do toast (para remoção programática).
+
+### Tipo Toast
+
 ```typescript
-// main.ts
-import pinia from '@/stores'
-
-app.use(pinia)
-```
-
-## Stores Disponíveis
-
-### toastStore (global)
-
-Sistema de notificações toast.
-
-```typescript
-// Uso
-const toastStore = useToastStore()
-
-toastStore.success('Operação realizada!')
-toastStore.error('Algo deu errado')
-toastStore.warning('Atenção!')
-toastStore.info('Informação')
-
-// Com duração customizada (ms)
-toastStore.success('Mensagem', 6000)
-```
-
-**Estado:**
-```typescript
-toasts: Toast[]  // Lista de toasts ativos
+type ToastType = 'success' | 'error' | 'warning' | 'info'
 
 interface Toast {
   id: number
-  type: 'success' | 'error' | 'warning' | 'info'
+  type: ToastType
   message: string
   duration: number
 }
 ```
 
-**Actions:**
+### Uso
+
 ```typescript
-show(message, type, duration)  // Exibe toast genérico
-success(message, duration?)    // Toast de sucesso
-error(message, duration?)      // Toast de erro
-warning(message, duration?)    // Toast de aviso
-info(message, duration?)       // Toast informativo
-remove(id)                     // Remove toast específico
+import { useToastStore } from '@/stores/toastStore'
+
+const toast = useToastStore()
+
+toast.success('Usuário criado com sucesso')
+toast.error('Erro ao carregar dados')
+toast.warning('Sessão expira em 5 minutos')
+toast.info('Nova conversa disponível')
 ```
 
-### authStore (feature auth)
-
-Gerencia autenticação do usuário.
+## Criando uma Nova Store
 
 ```typescript
-const authStore = useAuthStore()
+// features/minha-feature/stores/minhaStore.ts
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 
-// Login
-await authStore.login({ username: 'user', password: 'pass' })
+export const useMinhaStore = defineStore('minha-store', () => {
+  // State
+  const items = ref<Item[]>([])
+  const loading = ref(false)
 
-// Verificar auth
-const result = await authStore.checkAuth()
-if (!result.valid) {
-  // Sessão inválida
-}
+  // Getters
+  const count = computed(() => items.value.length)
 
-// Logout
-authStore.logout()
-```
-
-**Estado:**
-```typescript
-user: User | null        // Usuário logado
-token: string | null     // JWT Token
-loading: boolean         // Estado de loading
-error: string | null     // Mensagem de erro
-```
-
-**Getters:**
-```typescript
-isAuthenticated: boolean    // Se há sessão ativa
-currentUser: User | null    // Dados do usuário
-```
-
-**Actions:**
-```typescript
-login(credentials)          // Login com usuário/senha
-loginWithGitHub()           // Redireciona para OAuth
-logout()                    // Encerra sessão
-checkAuth()                 // Valida sessão no backend
-clearSession()              // Limpa dados locais
-```
-
-## Padrão de Setup Store
-
-```typescript
-export const useMyStore = defineStore('myStore', () => {
-  // State (ref)
-  const count = ref(0)
-  
-  // Getters (computed)
-  const double = computed(() => count.value * 2)
-  
-  // Actions (functions)
-  function increment() {
-    count.value++
+  // Actions
+  async function loadItems() {
+    loading.value = true
+    try {
+      items.value = await minhaService.getAll()
+    } finally {
+      loading.value = false
+    }
   }
-  
-  // Expor publicamente
-  return {
-    count,
-    double,
-    increment
-  }
+
+  return { items, loading, count, loadItems }
 })
-```
-
-## Acessando Stores Fora de Componentes
-
-Para usar stores em arquivos que não são componentes (router, serviços):
-
-```typescript
-import pinia from '@/stores'
-import { useAuthStore } from '@/features/auth'
-
-// Passa o pinia explicitamente
-const authStore = useAuthStore(pinia)
 ```

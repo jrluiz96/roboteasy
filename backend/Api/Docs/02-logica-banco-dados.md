@@ -1,293 +1,198 @@
-# Lógica do Banco de Dados - RobotEasy
+# Lógica do Banco de Dados
 
 ## Visão Geral
 
-O banco de dados é **PostgreSQL** gerenciado pelo **Entity Framework Core**.  
-Utilizamos **Code-First**: as tabelas são geradas a partir das classes C# (Models).
+O banco de dados é **PostgreSQL 16** gerenciado pelo **Entity Framework Core 10**. Todas as operações de acesso a dados passam exclusivamente pelos Repositories.
 
----
-
-## Diagrama do Banco
+## Diagrama de Relacionamentos
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              SISTEMA DE USUÁRIOS                            │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌─────────────┐       ┌─────────────────┐       ┌──────────────┐           │
-│  │ permissions │◄──────│ permission_views│──────►│    views     │           │
-│  ├─────────────┤  1:N  ├─────────────────┤  N:1  ├──────────────┤           │
-│  │ id (PK)     │       │ id (PK)         │       │ id (PK)      │           │
-│  │ name        │       │ permission_id   │       │ name         │           │
-│  │ created_at  │       │ view_id         │       │ route        │           │
-│  │ updated_at  │       └─────────────────┘       │ created_at   │           │
-│  │ deleted_at  │                                 │ updated_at   │           │
-│  └──────┬──────┘                                 │ deleted_at   │           │
-│         │                                        └──────────────┘           │
-│         │ 1:N                                                               │
-│         │                                                                   │
-│  ┌──────▼──────┐                                                            │
-│  │   users     │                                                            │
-│  ├─────────────┤                                                            │
-│  │ id (PK)     │                                                            │
-│  │ name        │                                                            │
-│  │ username    │  ← UNIQUE                                                  │
-│  │ email       │                                                            │
-│  │ password    │                                                            │
-│  │ token       │                                                            │
-│  │ ws_conn     │  ← WebSocket connection ID                                 │
-│  │ permission_id (FK)                                                       │
-│  │ created_at  │                                                            │
-│  │ updated_at  │                                                            │
-│  │ deleted_at  │  ← Soft delete                                             │
-│  │ session_at  │  ← Último login                                            │
-│  └─────────────┘                                                            │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+Permission ──1:N──► User
+Permission ──1:N──► PermissionView ◄──N:1── View
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              SISTEMA DE CHAT                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────────┐         ┌─────────────────────┐         ┌──────────────┐  │
-│  │   clients    │◄────────│   conversations     │────────►│   messages   │  │
-│  ├──────────────┤    1:N  ├─────────────────────┤    1:N  ├──────────────┤  │
-│  │ id (PK) BI   │         │ id (PK) BIGINT      │         │ id (PK) BI   │  │
-│  │ name         │         │ client_id (FK)      │         │ conv_id (FK) │  │
-│  │ ws_conn      │         │ created_at          │         │ client_id    │  │
-│  │ cpf          │         │ finished_at         │         │ user_id      │  │
-│  │ phone        │         │ attendance_time     │         │ type (enum)  │  │
-│  │ email        │         └──────────┬──────────┘         │ content      │  │
-│  │ created_at   │                    │                    │ file_url     │  │
-│  │ updated_at   │                    │ 1:N                │ file_name    │  │
-│  └──────────────┘                    │                    │ file_size    │  │
-│                      ┌───────────────▼───────────┐        │ created_at   │  │
-│                      │   user_conversations      │        └──────────────┘  │
-│                      ├───────────────────────────┤                          │
-│                      │ id (PK) BIGINT            │                          │
-│                      │ user_id (FK)              │◄─────── users            │
-│                      │ conversation_id (FK)      │                          │
-│                      │ started_at                │                          │
-│                      │ finished_at               │                          │
-│                      │ events (JSONB)            │  ← Logs de eventos       │
-│                      └───────────────────────────┘                          │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+User ──1:N──► UserConversation ◄──N:1── Conversation
+User ──1:N──► Message
+
+Client ──1:N──► Conversation
+Client ──1:N──► Message
+
+Conversation ──1:N──► Message
+Conversation ──1:N──► UserConversation
 ```
 
----
+## Modelos
 
-## Tabelas e Campos
-
-### 1. users (Atendentes/Administradores)
+### User (Usuário/Atendente)
 
 | Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | int PK | Identificador único |
-| name | varchar(100) | Nome completo |
-| username | varchar(100) UNIQUE | Login do usuário |
-| email | varchar(255) | Email opcional |
-| password_hash | text | Senha hashada com BCrypt |
-| token | varchar(500) | JWT token atual |
-| ws_conn | varchar(255) | ID da conexão WebSocket ativa |
-| permission_id | int FK | Referência à permissão |
-| created_at | timestamp | Data de criação |
-| updated_at | timestamp | Última atualização |
-| deleted_at | timestamp | **Soft delete** (null = ativo) |
-| session_at | timestamp | Data do último login |
+|---|---|---|
+| Id | `int` | PK, auto-increment |
+| Name | `string` (100) | Nome completo |
+| Username | `string` (100) | Login único (unique index) |
+| Email | `string?` (255) | E-mail (index) |
+| PasswordHash | `string` | Hash Argon2id da senha |
+| Token | `string?` | Token de sessão ativo (null = sem sessão) |
+| WsConn | `string?` | Connection ID do SignalR |
+| AvatarUrl | `string?` | URL do avatar |
+| PermissionId | `int` | FK → Permission (Restrict) |
+| CreatedAt | `DateTime` | Data de criação |
+| UpdatedAt | `DateTime?` | Última atualização |
+| DeletedAt | `DateTime?` | Soft delete (null = ativo) |
+| SessionAt | `DateTime?` | Último login |
 
-### 2. permissions (Perfis de Acesso)
+**Soft delete**: Query filter global `DeletedAt == null`. O `UserRepository.GetAllAsync()` usa `IgnoreQueryFilters()` para listar todos (incluindo inativos) na tela de administração.
 
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | int PK | Identificador único |
-| name | varchar(100) | Nome do perfil (Admin, Atendente, etc) |
-| created_at | timestamp | Data de criação |
-| updated_at | timestamp | Última atualização |
-| deleted_at | timestamp | Soft delete |
-
-### 3. views (Telas/Rotas do Sistema)
+### Client (Cliente do Chat)
 
 | Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | int PK | Identificador único |
-| name | varchar(100) | Nome da tela |
-| route | varchar(255) | Rota da aplicação (/dashboard, /users, etc) |
-| created_at | timestamp | Data de criação |
-| updated_at | timestamp | Última atualização |
-| deleted_at | timestamp | Soft delete |
+|---|---|---|
+| Id | `long` | PK, auto-increment |
+| Name | `string` (150) | Nome do cliente |
+| WsConn | `string?` | Connection ID do SignalR |
+| Cpf | `string?` (14) | CPF (index) |
+| Phone | `string?` (20) | Telefone (index) |
+| Email | `string?` (255) | E-mail (index) |
+| CreatedAt | `DateTime` | Data de criação (index) |
+| UpdatedAt | `DateTime?` | Última atualização |
 
-### 4. permission_views (Relação N:N)
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | int PK | Identificador único |
-| permission_id | int FK | Qual permissão |
-| view_id | int FK | Qual tela pode acessar |
-
-### 5. clients (Clientes do Chat)
+### Permission
 
 | Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | bigint PK | ID alto volume |
-| name | varchar(150) | Nome do cliente |
-| ws_conn | varchar(255) | Conexão WebSocket atual |
-| cpf | varchar(14) | CPF (indexado para busca) |
-| phone | varchar(20) | Telefone (indexado) |
-| email | varchar(255) | Email (indexado) |
-| created_at | timestamp | Primeira interação |
-| updated_at | timestamp | Última atualização |
+|---|---|---|
+| Id | `int` | PK, auto-increment |
+| Name | `string` (100) | Nome (admin, operator) |
+| CreatedAt | `DateTime` | Data de criação |
+| UpdatedAt | `DateTime?` | Última atualização |
+| DeletedAt | `DateTime?` | Soft delete |
 
-### 6. conversations (Sessões de Chat)
+### View (Tela do Sistema)
 
 | Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | bigint PK | ID alto volume |
-| client_id | bigint FK | Cliente da conversa |
-| created_at | timestamp | Início da conversa |
-| finished_at | timestamp | Fim (null = ativa) |
-| attendance_time | int | Tempo total em segundos |
+|---|---|---|
+| Id | `int` | PK, auto-increment |
+| Name | `string` (100) | Identificador da tela |
+| Route | `string` (255) | Rota no frontend |
+| Icon | `string` (100) | Classe do ícone FontAwesome |
+| CreatedAt | `DateTime` | Data de criação |
+| UpdatedAt | `DateTime?` | Última atualização |
+| DeletedAt | `DateTime?` | Soft delete |
 
-### 7. user_conversations (Atendentes por Conversa)
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | bigint PK | ID alto volume |
-| user_id | int FK | Atendente |
-| conversation_id | bigint FK | Conversa |
-| started_at | timestamp | Início do atendimento |
-| finished_at | timestamp | Fim (transferência/encerramento) |
-| events | jsonb | Logs: transferências, pausas, etc |
-
-**Por que essa tabela existe?**  
-Uma conversa pode ter **múltiplos atendentes** (transferência).  
-Isso permite rastrear quem atendeu, quando, e eventos ocorridos.
-
-### 8. messages (Mensagens)
+### PermissionView (Join: Permission ↔ View)
 
 | Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | bigint PK | ID alto volume |
-| conversation_id | bigint FK | Qual conversa |
-| client_id | bigint FK nullable | Se enviada pelo cliente |
-| user_id | int FK nullable | Se enviada pelo atendente |
-| type | enum | Text, Image, File, Audio, Video, System |
-| content | text | Conteúdo da mensagem |
-| file_url | varchar(500) | URL do arquivo (se houver) |
-| file_name | varchar(255) | Nome original do arquivo |
-| file_size | bigint | Tamanho em bytes |
-| created_at | timestamp | Data/hora do envio |
+|---|---|---|
+| Id | `int` | PK, auto-increment |
+| PermissionId | `int` | FK → Permission (Cascade) |
+| ViewId | `int` | FK → View (Cascade) |
 
----
+### Conversation
 
-## Índices para Performance
+| Campo | Tipo | Descrição |
+|---|---|---|
+| Id | `long` | PK, auto-increment |
+| ClientId | `long` | FK → Client (Restrict) |
+| CreatedAt | `DateTime` | Data de criação (index) |
+| FinishedAt | `DateTime?` | Data de finalização (index) |
+| AttendanceTime | `int?` | Tempo de atendimento em segundos |
 
-### Tabela clients
-```sql
-CREATE INDEX ix_clients_cpf ON clients(cpf);
-CREATE INDEX ix_clients_phone ON clients(phone);
-CREATE INDEX ix_clients_email ON clients(email);
-CREATE INDEX ix_clients_created_at ON clients(created_at);
-```
+**Índices**: `ClientId`, `CreatedAt`, `FinishedAt`, composto `{ClientId, FinishedAt}`.
 
-### Tabela conversations
-```sql
-CREATE INDEX ix_conversations_client_id ON conversations(client_id);
-CREATE INDEX ix_conversations_created_at ON conversations(created_at);
-CREATE INDEX ix_conversations_finished_at ON conversations(finished_at);
--- Índice composto: buscar conversa ativa de um cliente
-CREATE INDEX ix_conversations_client_finished ON conversations(client_id, finished_at);
-```
+### Message
 
-### Tabela user_conversations
-```sql
-CREATE INDEX ix_user_conversations_user_id ON user_conversations(user_id);
-CREATE INDEX ix_user_conversations_conversation_id ON user_conversations(conversation_id);
--- Índice composto: atendimentos ativos de um usuário
-CREATE INDEX ix_user_conversations_user_finished ON user_conversations(user_id, finished_at);
-```
+| Campo | Tipo | Descrição |
+|---|---|---|
+| Id | `long` | PK, auto-increment |
+| ConversationId | `long` | FK → Conversation (Cascade) |
+| ClientId | `long?` | FK → Client (SetNull) — null = enviada por atendente |
+| UserId | `int?` | FK → User (SetNull) — null = enviada por cliente |
+| Type | `MessageType` | Tipo da mensagem (enum) |
+| Content | `string` | Conteúdo (required) |
+| FileUrl | `string?` (500) | URL do arquivo |
+| FileName | `string?` (255) | Nome do arquivo |
+| FileSize | `long?` | Tamanho do arquivo em bytes |
+| CreatedAt | `DateTime` | Data de criação |
 
-### Tabela messages (CRÍTICO)
-```sql
-CREATE INDEX ix_messages_conversation_id ON messages(conversation_id);
-CREATE INDEX ix_messages_created_at ON messages(created_at);
--- Índice composto: carregar mensagens de uma conversa ordenadas (mais usado)
-CREATE INDEX ix_messages_conv_created ON messages(conversation_id, created_at);
-```
+**Índices**: `ConversationId`, `CreatedAt`, composto `{ConversationId, CreatedAt}`.
 
----
+**MessageType (enum):**
 
-## Soft Delete
+| Valor | Nome |
+|---|---|
+| 1 | Text |
+| 2 | Image |
+| 3 | File |
+| 4 | Audio |
+| 5 | Video |
+| 6 | System |
 
-As tabelas `users`, `permissions` e `views` usam **soft delete**:
-- Registros não são removidos, apenas marcam `deleted_at`
-- Consultas filtram automaticamente registros deletados
-- Permite recuperação e auditoria
+### UserConversation (Join: User ↔ Conversation)
 
-```csharp
-// Configurado no EF Core:
-entity.HasQueryFilter(u => u.DeletedAt == null);
-```
+| Campo | Tipo | Descrição |
+|---|---|---|
+| Id | `long` | PK, auto-increment |
+| UserId | `int` | FK → User (Restrict) |
+| ConversationId | `long` | FK → Conversation (Cascade) |
+| StartedAt | `DateTime` | Quando o atendente entrou |
+| FinishedAt | `DateTime?` | Quando o atendente saiu |
+| Events | `string?` | Eventos em formato jsonb |
 
----
+**Índices**: `UserId`, `ConversationId`, composto `{UserId, FinishedAt}`.
 
-## Por que BIGINT no Chat?
+## Hash de Senhas — Argon2id
 
-Tabelas de chat (`clients`, `conversations`, `messages`) usam `bigint` porque:
-- Um sistema de chat pode ter **milhões de mensagens**
-- `int` suporta até ~2 bilhões
-- `bigint` suporta até ~9 quintilhões
-- Melhor prevenir do que migrar depois
+As senhas são hasheadas usando **Argon2id** (não BCrypt). Configuração via variáveis de ambiente:
 
----
+| Parâmetro | Padrão | Descrição |
+|---|---|---|
+| MemorySize | 65536 | Memória em KB (64MB) |
+| Iterations | 4 | Número de iterações |
+| Parallelism | 2 | Threads paralelas |
+| HashLength | 32 | Tamanho do hash em bytes |
+| SaltLength | 16 | Tamanho do salt em bytes |
 
-## Por que NÃO usar Base64 para arquivos?
+## Seed Inicial (DatabaseSeeder)
 
-Decisão: Guardar `file_url` ao invés de `file_content base64`:
+Executado na inicialização após `Database.MigrateAsync()`:
 
-| Aspecto | Base64 no DB | URL externa |
-|---------|--------------|-------------|
-| Tamanho | +33% (codificação) | Original |
-| Performance | Lento (carregar sempre) | Sob demanda |
-| Backup | DB gigante | DB leve |
-| CDN | Impossível | Possível |
+### 1. Permissions
 
-**Solução**: Arquivos vão para S3/MinIO/disco, DB guarda apenas a URL.
+| Nome |
+|---|
+| admin |
+| operator |
 
----
+### 2. Users
 
-## Convenções de Nomenclatura
+| Username | Nome | Email | Senha | Permissão |
+|---|---|---|---|---|
+| admin.master | Administrador Master | admin@roboteasy.com | MyAdm2026TestCode | admin |
+| francisco.luiz | Francisco Luiz | francisco.luiz.jr@outlook.com | CodandoEmC# | operator |
 
-| Tipo | Convenção | Exemplo |
-|------|-----------|---------|
-| Tabelas | snake_case plural | `user_conversations` |
-| Colunas | snake_case | `permission_id` |
-| Foreign Keys | `{entidade}_id` | `client_id`, `user_id` |
-| Índices | `ix_{tabela}_{colunas}` | `ix_messages_conv_created` |
-| Classes C# | PascalCase | `UserConversation` |
+### 3. Views
 
----
+| Nome | Rota | Ícone |
+|---|---|---|
+| home | /session/home | fa-house |
+| customer_service | /session/customer-service | fa-headset |
+| clients | /session/clients | fa-user |
+| history | /session/history | fa-clock-rotate-left |
+| users | /session/users | fa-users |
+| monitoring | /session/monitoring | fa-chart-line |
 
-## Migrations
+### 4. PermissionViews
 
-O Entity Framework Core gera migrations automaticamente:
+| Permissão | Views |
+|---|---|
+| admin | Todas as 6 views |
+| operator | home, customer_service |
+
+## Migrações
+
+As migrações ficam em `Migrations/` e são aplicadas automaticamente via `DatabaseSeeder.SeedAsync()` no startup.
+
+Para criar uma nova migração:
 
 ```bash
-# Criar nova migration
-dotnet ef migrations add NomeDaMigration
-
-# Aplicar no banco
-dotnet ef database update
-
-# Reverter última migration
-dotnet ef migrations remove
-```
-
-No `Program.cs`, as migrations são aplicadas automaticamente no startup:
-```csharp
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-}
+cd backend/Api
+dotnet ef migrations add NomeDaMigracao
 ```

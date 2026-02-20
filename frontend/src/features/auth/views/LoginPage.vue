@@ -18,10 +18,6 @@ async function handleLogin(credentials: { username: string; password: string }) 
     router.push('/session/home')
   }
 }
-
-function handleGitHubLogin() {
-  authStore.loginWithGitHub()
-}
 </script>
 
 <template>
@@ -42,7 +38,6 @@ function handleGitHubLogin() {
         :loading="loading"
         :error="authStore.error"
         @submit="handleLogin"
-        @github-login="handleGitHubLogin"
       />
     </div>
   </div>

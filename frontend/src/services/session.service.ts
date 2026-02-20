@@ -13,7 +13,6 @@ export interface Session {
   username: string
   email: string | null
   avatarUrl: string | null
-  gitHubLogin: string | null
   permissionId: number
   sessionAt: string | null
   views: View[]

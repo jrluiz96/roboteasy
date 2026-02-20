@@ -6,12 +6,10 @@ export interface User {
   username: string
   email: string
   avatarUrl: string | null
-  gitHubLogin: string | null
   permissionId: number
   permissionName: string
   sessionAt: string | null
   createdAt: string
-  updatedAt: string
   deletedAt: string | null
 }
 

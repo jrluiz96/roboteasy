@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<IPermissionViewRepository, PermissionViewRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
+        services.AddScoped<IMessageRepository, MessageRepository>();
 
         // Services
         services.AddScoped<IUserService, UserService>();
@@ -39,7 +40,6 @@ public static class DependencyInjection
         services.AddScoped<IConversationService, ConversationService>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddSingleton<IJwtService, JwtService>();
-        services.AddHttpClient<IGitHubService, GitHubService>();
 
         // Argon2 Settings - validação obrigatória
         var argon2Section = configuration.GetSection("Argon2");
@@ -96,14 +96,6 @@ public static class DependencyInjection
         });
         
         services.AddAuthorization();
-
-        // GitHub OAuth Settings - validação obrigatória
-        var githubSection = configuration.GetSection("GitHub");
-        _ = githubSection["ClientId"] ?? throw new InvalidOperationException("GitHub:ClientId não configurado");
-        _ = githubSection["ClientSecret"] ?? throw new InvalidOperationException("GitHub:ClientSecret não configurado");
-        _ = githubSection["CallbackUrl"] ?? throw new InvalidOperationException("GitHub:CallbackUrl não configurado");
-        
-        services.Configure<GitHubSettings>(githubSection);
 
         return services;
     }

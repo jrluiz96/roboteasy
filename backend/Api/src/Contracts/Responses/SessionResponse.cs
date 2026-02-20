@@ -10,7 +10,6 @@ public class SessionResponse
     public string Username { get; set; } = string.Empty;
     public string? Email { get; set; }
     public string? AvatarUrl { get; set; }
-    public string? GitHubLogin { get; set; }
     public int PermissionId { get; set; }
     public DateTime? SessionAt { get; set; }
     public List<ViewResponse> Views { get; set; } = new List<ViewResponse>();

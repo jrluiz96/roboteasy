@@ -85,5 +85,5 @@ public class UserService : IUserService
     }
 
     private static UserResponse ToResponse(User user) =>
-        new(user.Id, user.Name, user.Username, user.Email, user.AvatarUrl, user.GitHubLogin, user.PermissionId, user.Permission?.Name, user.CreatedAt, user.SessionAt, user.DeletedAt);
+        new(user.Id, user.Name, user.Username, user.Email, user.AvatarUrl, user.PermissionId, user.Permission?.Name, user.CreatedAt, user.SessionAt, user.DeletedAt);
 }

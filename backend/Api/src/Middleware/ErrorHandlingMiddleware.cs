@@ -34,12 +34,16 @@ public class ErrorHandlingMiddleware
 
         var response = new
         {
-            error = "Erro interno do servidor",
-            message = exception.Message,
-            timestamp = DateTime.UtcNow
+            code = 500,
+            status = "error",
+            message = "Erro interno do servidor",
+            data = (object?)null
         };
 
-        var json = JsonSerializer.Serialize(response);
+        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
         await context.Response.WriteAsync(json);
     }
 }

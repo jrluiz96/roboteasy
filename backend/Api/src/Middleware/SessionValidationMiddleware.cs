@@ -1,9 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json;
-using Api.Data;
-using Api.Models;
-using Microsoft.EntityFrameworkCore;
+using Api.Repositories;
 
 namespace Api.Middleware;
 
@@ -20,7 +18,7 @@ public class SessionValidationMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, AppDbContext dbContext)
+    public async Task InvokeAsync(HttpContext context, IUserRepository userRepository)
     {
         // Se o usuário está autenticado com JWT, valida o session_token
         if (context.User.Identity?.IsAuthenticated == true)
@@ -33,9 +31,7 @@ public class SessionValidationMiddleware
             {
                 if (int.TryParse(userIdClaim.Value, out var userId))
                 {
-                    var user = await dbContext.Users
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(u => u.Id == userId);
+                    var user = await userRepository.GetByIdAsync(userId);
 
                     // Verifica se o usuário existe, não foi deletado e se o session_token bate
                     if (user == null || user.DeletedAt != null || user.Token != sessionTokenClaim.Value)
