@@ -3,9 +3,11 @@ import { ref, computed, onMounted } from 'vue'
 import { conversationService, type ConversationListItem, type ConversationDetail } from '@/services/conversation.service'
 import { useToastStore } from '@/stores/toastStore'
 import { useRouter } from 'vue-router'
+import { useFormatters } from '@/composables/useFormatters'
 
 const toastStore = useToastStore()
 const router = useRouter()
+const { formatDate, formatDuration, initials } = useFormatters()
 
 const items = ref<ConversationListItem[]>([])
 const loading = ref(false)
@@ -58,26 +60,6 @@ async function openDetail(convId: number) {
 function closeDetail() {
   showDetail.value = false
   detail.value = null
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
-function formatDuration(seconds: number | null) {
-  if (!seconds) return '-'
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = seconds % 60
-  if (h > 0) return `${h}h ${m}m ${s}s`
-  return m > 0 ? `${m}m ${s}s` : `${s}s`
-}
-
-function initials(name: string) {
-  return name.split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase()
 }
 
 function goToAtendimento() {

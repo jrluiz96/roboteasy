@@ -12,9 +12,11 @@ import { api } from '@/services/api'
 import { usersService, type User } from '@/services/users.service'
 import { useAuthStore } from '@/features/auth/stores/authStore'
 import { useToastStore } from '@/stores/toastStore'
+import { useFormatters } from '@/composables/useFormatters'
 
 const toastStore = useToastStore()
 const authStore  = useAuthStore()
+const { formatTime, formatPreview, initials } = useFormatters()
 
 // State
 const activeTab     = ref<'chats' | 'history'>('chats')
@@ -364,18 +366,7 @@ function scrollBottom() {
   nextTick(() => { if (messagesEl.value) messagesEl.value.scrollTop = messagesEl.value.scrollHeight })
 }
 function isMyMsg(msg: ConversationMessage) { return msg.userId !== null }
-function formatTime(d: string) {
-  return new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-}
-function formatPreview(d: string) {
-  const now = new Date(); const dt = new Date(d)
-  return dt.toDateString() === now.toDateString()
-    ? formatTime(d)
-    : dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-}
-function initials(name: string) {
-  return name.split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase()
-}
+function isSystem(msg: ConversationMessage) { return msg.type === 6 || msg.type === 99 }
 </script>
 
 <template>
@@ -608,10 +599,10 @@ function initials(name: string) {
             <div
               v-for="msg in conversation.messages"
               :key="msg.id"
-              :class="['flex', msg.type === 99 ? 'justify-center' : isMyMsg(msg) ? 'justify-end' : 'justify-start']"
+              :class="['flex', isSystem(msg) ? 'justify-center' : isMyMsg(msg) ? 'justify-end' : 'justify-start']"
             >
               <!-- Mensagem de sistema -->
-              <div v-if="msg.type === 99" class="text-xs text-gray-400 dark:text-gray-500 italic bg-gray-100 dark:bg-gray-700/50 px-3 py-1 rounded-full">
+              <div v-if="isSystem(msg)" class="text-xs text-gray-400 dark:text-gray-500 italic bg-gray-100 dark:bg-gray-700/50 px-3 py-1 rounded-full">
                 {{ msg.content }}
               </div>
               <!-- Mensagem normal -->

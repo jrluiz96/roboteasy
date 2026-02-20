@@ -2,8 +2,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { usersService, type User, type Permission, type CreateUserRequest, type UpdateUserRequest } from '@/services/users.service'
 import { useToastStore } from '@/stores/toastStore'
+import { useFormatters } from '@/composables/useFormatters'
 
 const toastStore = useToastStore()
+const { formatDate } = useFormatters()
 
 // Estado da aplicação
 const users = ref<User[]>([])
@@ -135,17 +137,6 @@ function getStatusColor(isActive: boolean) {
     : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
 }
 
-function formatDate(date: string | null | undefined): string {
-  if (!date) return 'Nunca'
-  return new Date(date).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
@@ -268,15 +259,9 @@ async function submitResetPassword() {
 
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    loadUsers(),
-    loadPermissions()
-  ])
-  
-  // Definir permissionId padrão após carregar permissões
+  await Promise.all([loadUsers(), loadPermissions()])
   if (permissions.value.length > 0) {
     newUser.value.permissionId = defaultPermissionId.value
-    console.log('✅ PermissionId padrão definido:', newUser.value.permissionId)
   }
 })
 </script>
@@ -304,7 +289,7 @@ onMounted(async () => {
 
     <!-- Stats -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 w-full">
-      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 card-container">
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
         <div class="flex items-center">
           <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
             <i class="fas fa-users text-blue-600 dark:text-blue-400"></i>
@@ -317,7 +302,7 @@ onMounted(async () => {
           </div>
         </div>
       </div>
-      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 card-container">
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
         <div class="flex items-center">
           <div class="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
             <i class="fas fa-user-check text-green-600 dark:text-green-400"></i>
@@ -330,7 +315,7 @@ onMounted(async () => {
           </div>
         </div>
       </div>
-      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 card-container">
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
         <div class="flex items-center">
           <div class="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
             <i class="fas fa-user-shield text-red-600 dark:text-red-400"></i>
@@ -343,7 +328,7 @@ onMounted(async () => {
           </div>
         </div>
       </div>
-        <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 card-container">
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
         <div class="flex items-center">
           <div class="w-10 h-10 bg-gray-100 dark:bg-gray-900/20 rounded-lg flex items-center justify-center">
             <i class="fas fa-user-times text-gray-600 dark:text-gray-400"></i>
@@ -359,7 +344,7 @@ onMounted(async () => {
     </div>
 
     <!-- Filters -->
-    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 w-full card-container">
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 w-full">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
         <div>
           <div class="relative">
@@ -397,8 +382,8 @@ onMounted(async () => {
     </div>
 
     <!-- Users Table -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden w-full card-container">
-      <div class="overflow-x-auto w-full overflow-container">
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
+      <div class="overflow-x-auto w-full">
         <table class="w-full">
           <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
@@ -444,7 +429,7 @@ onMounted(async () => {
                 </span>
               </td>
               <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                {{ formatDate(user.sessionAt) }}
+                {{ user.sessionAt ? formatDate(user.sessionAt) : 'Nunca' }}
               </td>
               <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                 {{ formatDate(user.createdAt) }}
@@ -490,8 +475,8 @@ onMounted(async () => {
     </div>
 
     <!-- Add User Modal -->
-    <div v-if="showAddUser" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+    <div v-if="showAddUser" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md mx-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Novo Usuário</h3>
         <div class="space-y-4">
           <div>
@@ -565,8 +550,8 @@ onMounted(async () => {
     </div>
 
     <!-- Edit User Modal -->
-    <div v-if="showEditUser && editingUser" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+    <div v-if="showEditUser && editingUser" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md mx-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Editar Usuário</h3>
         <div class="space-y-4">
           <div>
@@ -630,8 +615,8 @@ onMounted(async () => {
     </div>
 
     <!-- Reset Password Modal -->
-    <div v-if="showResetPassword && resetPasswordUser" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+    <div v-if="showResetPassword && resetPasswordUser" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">Redefinir senha</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">Defina uma nova senha para <span class="font-medium text-gray-700 dark:text-gray-200">{{ resetPasswordUser.name }}</span></p>
         <div class="space-y-4">
@@ -681,8 +666,8 @@ onMounted(async () => {
     </div>
 
     <!-- Confirm Modal -->
-    <div v-if="confirmModal.show" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-sm mx-4 shadow-xl">
+    <div v-if="confirmModal.show" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl">
         <div class="flex items-center gap-3 mb-3">
           <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
             <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400"></i>

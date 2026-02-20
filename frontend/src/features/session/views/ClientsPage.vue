@@ -2,8 +2,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { clientsService, type ClientItem } from '@/services/clients.service'
 import { useToastStore } from '@/stores/toastStore'
+import { useFormatters } from '@/composables/useFormatters'
 
 const toastStore = useToastStore()
+const { formatDate, formatDateShort, initials } = useFormatters()
 
 const clients = ref<ClientItem[]>([])
 const loading = ref(false)
@@ -55,21 +57,6 @@ function openDetail(client: ClientItem) {
 function closeDetail() {
   showDetail.value = false
   selectedClient.value = null
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
-function formatDateShort(d: string) {
-  return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-function initials(name: string) {
-  return name.split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase()
 }
 </script>
 

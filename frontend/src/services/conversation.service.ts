@@ -84,4 +84,5 @@ export const conversationService = {
 
   async invite(id: number, attendantId: number): Promise<void> {
     await api.post(`/api/v1/conversations/${id}/invite/${attendantId}`, {})
-  },}
+  },
+}

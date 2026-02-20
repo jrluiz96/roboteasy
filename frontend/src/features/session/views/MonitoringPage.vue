@@ -10,8 +10,10 @@ import { chatService, type ChatMessage } from '@/services/chat.service'
 import { api } from '@/services/api'
 import { usersService, type User } from '@/services/users.service'
 import { useToastStore } from '@/stores/toastStore'
+import { useFormatters } from '@/composables/useFormatters'
 
 const toastStore = useToastStore()
+const { formatDate, formatTime, formatPreview, initials } = useFormatters()
 
 // ── State ────────────────────────────────────────────────────────────────────
 const activeTab     = ref<'conversations' | 'operators'>('conversations')
@@ -339,30 +341,12 @@ async function doInvite(user: User) {
 function scrollBottom() {
   nextTick(() => { if (messagesEl.value) messagesEl.value.scrollTop = messagesEl.value.scrollHeight })
 }
-function formatTime(d: string) {
-  return new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-}
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-function formatPreview(d: string) {
-  const now = new Date(); const dt = new Date(d)
-  return dt.toDateString() === now.toDateString()
-    ? formatTime(d)
-    : dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-}
 function duration(d: string) {
   const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000)
   if (mins < 1) return 'agora'
   if (mins < 60) return `${mins}min`
   const h = Math.floor(mins / 60)
   return `${h}h${mins % 60}min`
-}
-function initials(name: string) {
-  return name.split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase()
 }
 function isAgentMsg(msg: ConversationMessage) { return msg.userId !== null }
 </script>

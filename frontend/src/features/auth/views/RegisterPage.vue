@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { useToastStore } from '@/stores/toastStore'
-import { authService } from '@/services/auth.service'
+import { authApi } from '../services/authApi'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -37,7 +37,7 @@ async function handleRegister() {
 
   loading.value = true
   try {
-    const result = await authService.register({
+    const result = await authApi.register({
       name: name.value.trim(),
       username: username.value.trim(),
       email: email.value.trim(),
