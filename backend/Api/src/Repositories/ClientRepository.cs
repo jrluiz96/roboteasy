@@ -24,6 +24,15 @@ public class ClientRepository : IClientRepository
         return await _context.Clients.FindAsync(id);
     }
 
+    public async Task<List<Client>> GetAllAsync()
+    {
+        return await _context.Clients
+            .Include(c => c.Conversations)
+            .Include(c => c.Messages)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+    }
+
     public async Task<Client> CreateAsync(Client client)
     {
         _context.Clients.Add(client);

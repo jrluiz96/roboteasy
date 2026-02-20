@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IChatService, ChatService>();
         services.AddScoped<IConversationService, ConversationService>();
+        services.AddScoped<IClientService, ClientService>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddSingleton<IJwtService, JwtService>();
 
