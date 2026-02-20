@@ -2,6 +2,13 @@
 
 Sistema de atendimento ao cliente com chat em tempo real via WebSocket.
 
+### Credenciais padrão (seed)
+
+| Usuário | Senha | Permissão |
+|---|---|---|
+| `admin.master` | `MyAdm2026TestCode` | admin (todas as telas) 
+
+
 ## Visão Geral
 
 - **Backend**: API REST + SignalR Hub (.NET 10, PostgreSQL 16)
@@ -24,9 +31,9 @@ Sistema de atendimento ao cliente com chat em tempo real via WebSocket.
 
 ```
 ┌─────────────┐     HTTP/WS      ┌─────────────┐     SQL      ┌──────────────┐
-│   Frontend   │ ◄──────────────► │   Backend   │ ◄──────────► │  PostgreSQL   │
-│  Vue 3 SPA   │    :3000→:8080   │  .NET 10    │              │    16         │
-│  Tailwind    │                  │  SignalR     │              │              │
+│   Frontend  │ ◄──────────────► │   Backend   │ ◄──────────► │  PostgreSQL  │
+│  Vue 3 SPA  │    :3000→:8080   │  .NET 10    │              │    16        │
+│  Tailwind   │                  │  SignalR    │              │              │
 └─────────────┘                  └─────────────┘              └──────────────┘
 ```
 
@@ -48,13 +55,6 @@ npm install
 npm run dev
 # App: http://localhost:3000
 ```
-
-### Credenciais padrão (seed)
-
-| Usuário | Senha | Permissão |
-|---|---|---|
-| `admin.master` | `MyAdm2026TestCode` | admin (todas as telas) |
-| `francisco.luiz` | `CodandoEmC#` | operator (home + atendimento) |
 
 ## Tech Stack
 

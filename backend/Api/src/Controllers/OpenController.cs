@@ -59,6 +59,12 @@ public class OpenController : ControllerBase
         return StatusCode(response.Code, response);
     }
 
+    [HttpGet("health")]
+    public IActionResult Health()
+    {
+        return Ok(new { status = "healthy" });
+    }
+
     [HttpGet("swagger")]
     public IActionResult Swagger()
     {

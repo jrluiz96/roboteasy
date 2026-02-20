@@ -356,6 +356,7 @@ function pushSystemMessage(convId: number, text: string) {
     clientId: null,
     type: 99,                 // 99 = system (local only)
     content: text,
+    senderName: null,
     fileUrl: null,
     createdAt: new Date().toISOString(),
   })

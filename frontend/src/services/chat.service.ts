@@ -87,14 +87,15 @@ class ChatService {
 
   async start(data: ChatStartRequest): Promise<ChatStartResponse> {
     if (this._startPromise) return this._startPromise
-    this._startPromise = api
+    const promise = api
       .post<ChatStartResponse>('/api/v1/open/chat/start', data)
       .then((response) => {
         if (response.code === 200 && response.data) return response.data
         throw new Error(response.message || 'Erro ao iniciar atendimento')
       })
       .finally(() => { this._startPromise = null })
-    return this._startPromise
+    this._startPromise = promise
+    return promise
   }
 
   // ── Connection ─────────────────────────────────────────────────────────────
