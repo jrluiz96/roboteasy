@@ -32,20 +32,27 @@ public class ChatHub : Hub
     {
         var userId = GetUserId();
         var clientId = GetClientId();
+        var isMonitor = IsMonitorConnection();
 
         if (userId != null)
         {
-            // Atendente conectou
-            await _userRepository.UpdateWsConnAsync(userId.Value, Context.ConnectionId);
-
             // Entra no grupo de atendentes para receber novos chats
             await Groups.AddToGroupAsync(Context.ConnectionId, "attendants");
 
-            await Clients.Others.SendAsync(ChatEvents.UserOnline, new
+            if (!isMonitor)
             {
-                UserId = userId.Value,
-                ConnectionId = Context.ConnectionId
-            });
+                // Apenas conexão de atendimento marca o usuário como online
+                await _userRepository.UpdateWsConnAsync(userId.Value, Context.ConnectionId);
+
+                await Clients.Others.SendAsync(ChatEvents.UserOnline, new
+                {
+                    UserId = userId.Value,
+                    ConnectionId = Context.ConnectionId
+                });
+            }
+
+            // Salva flag no contexto para usar no disconnect
+            Context.Items["monitor"] = isMonitor;
         }
         else if (clientId != null)
         {
@@ -66,8 +73,9 @@ public class ChatHub : Hub
     {
         var userId = GetUserId();
         var clientId = GetClientId();
+        var isMonitor = Context.Items.TryGetValue("monitor", out var val) && val is true;
 
-        if (userId != null)
+        if (userId != null && !isMonitor)
         {
             await _userRepository.UpdateWsConnAsync(userId.Value, null);
 
@@ -210,4 +218,11 @@ public class ChatHub : Hub
 
     private static string ConversationGroup(long conversationId) =>
         $"conversation:{conversationId}";
+
+    /// <summary>Verifica se a conexão é modo monitor (escuta-only, sem marcar online)</summary>
+    private bool IsMonitorConnection()
+    {
+        var monitor = Context.GetHttpContext()?.Request.Query["monitor"].ToString();
+        return string.Equals(monitor, "true", StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -10,5 +10,6 @@ public record UserResponse(
     string? PermissionName,
     DateTime CreatedAt,
     DateTime? SessionAt,
-    DateTime? DeletedAt
+    DateTime? DeletedAt,
+    bool IsOnline
 );

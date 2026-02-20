@@ -5,6 +5,7 @@ namespace Api.Services;
 public interface IConversationService
 {
     Task<List<ConversationListItemResponse>> GetActiveAsync(int userId);
+    Task<List<ConversationListItemResponse>> GetAllActiveAsync();
     Task<List<ConversationListItemResponse>> GetHistoryAsync();
     Task<ConversationDetailResponse?> GetByIdAsync(long id);
     Task<bool> FinishAsync(long id);

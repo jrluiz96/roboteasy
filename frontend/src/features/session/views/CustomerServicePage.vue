@@ -130,26 +130,46 @@ function setupGlobalMessageListener() {
     }
   })
 
-  chatService.onConversationInvited(async ({ conversationId: convId }) => {
-    // Entra no grupo SignalR para receber mensagens em tempo real
-    await chatService.joinConversation(convId)
-    // Busca o detalhe e monta um item da lista
+  chatService.onConversationInvited(async ({ conversationId: convId, invitedUserId }: { conversationId: number; invitedUserId?: number }) => {
+    const isMe = invitedUserId === authStore.currentUser?.id
+
+    // Se EU fui convidado, entra no grupo SignalR
+    if (isMe) {
+      await chatService.joinConversation(convId)
+    }
+
+    // Busca detalhe atualizado (attendants podem ter mudado)
     const detail = await conversationService.getById(convId)
     if (!detail) return
-    // Evita duplicatas
-    if (conversations.value.some(c => c.id === convId)) return
-    conversations.value.unshift({
-      id:            detail.id,
-      clientId:      detail.clientId,
-      clientName:    detail.clientName,
-      clientEmail:   detail.clientEmail,
-      lastMessage:   detail.messages.at(-1)?.content ?? null,
-      lastMessageAt: detail.messages.at(-1)?.createdAt ?? null,
-      messageCount:  detail.messages.length,
-      createdAt:     detail.createdAt,
-      finishedAt:    detail.finishedAt,
-      status:        detail.status,
-    })
+
+    // Se esta conversa está aberta, atualiza para refletir os novos membros
+    if (selectedId.value === convId) {
+      conversation.value = detail
+      await nextTick()
+      scrollBottom()
+    }
+
+    // Atualiza item da lista (status + attendants) se já existe
+    const existing = conversations.value.find(c => c.id === convId)
+    if (existing) {
+      existing.status     = detail.status
+      existing.attendants = detail.attendants
+    } else if (isMe) {
+      // Adiciona na lista se EU fui convidado e ainda não existe
+      conversations.value.unshift({
+        id:            detail.id,
+        clientId:      detail.clientId,
+        clientName:    detail.clientName,
+        clientEmail:   detail.clientEmail,
+        lastMessage:   detail.messages.at(-1)?.content ?? null,
+        lastMessageAt: detail.messages.at(-1)?.createdAt ?? null,
+        messageCount:  detail.messages.length,
+        createdAt:     detail.createdAt,
+        finishedAt:    detail.finishedAt,
+        status:        detail.status,
+        attendants:    detail.attendants,
+      })
+    }
   })
 
   chatService.onConversationCreated(async (payload) => {
@@ -168,12 +188,14 @@ function setupGlobalMessageListener() {
       createdAt:     payload.createdAt,
       finishedAt:    null,
       status:        'waiting',
+      attendants:    [],
     })
   })
 }
 
 async function selectConversation(id: number, forceReload = false) {
-  if (selectedId.value === id && !forceReload) return
+  // Se já está visualizando mas NÃO é membro, recarrega para captar convites recentes
+  if (selectedId.value === id && !forceReload && isMember.value) return
   loadingChat.value = true
   selectedId.value = id
   // Limpa badge de não lidas desta conversa

@@ -12,6 +12,9 @@ public interface IConversationRepository
     /// <summary>Lista conversas visíveis ao atendente: waiting (todas) + active (só as vinculadas)</summary>
     Task<List<(Conversation Conv, int MessageCount)>> GetActiveListAsync(int userId);
 
+    /// <summary>Lista TODAS as conversas ativas (waiting + active) — usado pelo monitoramento</summary>
+    Task<List<(Conversation Conv, int MessageCount)>> GetAllActiveListAsync();
+
     /// <summary>Lista conversas finalizadas — aba Histórico do atendente</summary>
     Task<List<(Conversation Conv, int MessageCount)>> GetHistoryListAsync();
 

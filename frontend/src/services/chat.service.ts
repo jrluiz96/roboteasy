@@ -109,6 +109,16 @@ class ChatService {
   }
 
   /**
+   * Conecta como monitor (escuta-only). Não marca o usuário como online
+   * para atendimento — apenas recebe eventos em tempo real.
+   * @param accessToken  JWT obtido no login
+   */
+  async connectAsMonitor(accessToken: string): Promise<void> {
+    const url = `${HUB_URL}?access_token=${encodeURIComponent(accessToken)}&monitor=true`
+    await this._connect(url)
+  }
+
+  /**
    * Conecta como cliente externo (token gerado em POST /api/v1/open/chat/start).
    * @param clientToken  Token opaco gerado pelo backend
    */
@@ -186,7 +196,7 @@ class ChatService {
     this._on(ChatEvents.AttendantLeft, handler)
   }
 
-  onConversationInvited(handler: (payload: { conversationId: number }) => void): void {
+  onConversationInvited(handler: (payload: { conversationId: number; invitedUserId?: number }) => void): void {
     this._on(ChatEvents.ConversationInvited, handler)
   }
 

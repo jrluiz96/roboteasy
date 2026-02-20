@@ -33,6 +33,15 @@ public class ConversationsController : ControllerBase
         return StatusCode(response.Code, response);
     }
 
+    /// <summary>Lista TODAS as conversas ativas (monitoramento)</summary>
+    [HttpGet("monitor")]
+    public async Task<IActionResult> GetAllActive()
+    {
+        var items = await _service.GetAllActiveAsync();
+        var response = ApiResponse<List<ConversationListItemResponse>>.Success(items, "Todas as conversas ativas");
+        return StatusCode(response.Code, response);
+    }
+
     /// <summary>Lista conversas finalizadas (aba Histórico)</summary>
     [HttpGet("history")]
     public async Task<IActionResult> GetHistory()

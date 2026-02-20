@@ -23,6 +23,12 @@ public class ConversationService : IConversationService
         return conversations.Select(x => ToListItem(x.Conv, x.MessageCount)).ToList();
     }
 
+    public async Task<List<ConversationListItemResponse>> GetAllActiveAsync()
+    {
+        var conversations = await _repository.GetAllActiveListAsync();
+        return conversations.Select(x => ToListItem(x.Conv, x.MessageCount)).ToList();
+    }
+
     public async Task<List<ConversationListItemResponse>> GetHistoryAsync()
     {
         var conversations = await _repository.GetHistoryListAsync();
@@ -80,10 +86,18 @@ public class ConversationService : IConversationService
         var (success, wsConn) = await _repository.InviteAttendantAsync(id, invitedUserId);
         if (!success) return false;
 
-        // Notifica o atendente convidado em tempo real (se estiver online)
+        var payload = new { conversationId = id, invitedUserId };
+
+        // Notifica o atendente convidado diretamente (se estiver online)
         if (wsConn != null)
             await _hub.Clients.Client(wsConn)
-                .SendAsync(ChatEvents.ConversationInvited, new { conversationId = id });
+                .SendAsync(ChatEvents.ConversationInvited, payload);
+
+        // Também notifica todos no grupo da conversa (redundância: operadores que
+        // entraram no grupo via ConversationCreated recebem o evento mesmo se o
+        // wsConn direto estiver desatualizado).
+        await _hub.Clients.Group($"conversation:{id}")
+            .SendAsync(ChatEvents.ConversationInvited, payload);
 
         return true;
     }

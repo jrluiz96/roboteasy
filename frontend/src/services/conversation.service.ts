@@ -56,6 +56,11 @@ export const conversationService = {
     return res.data ?? []
   },
 
+  async getMonitor(): Promise<ConversationListItem[]> {
+    const res = await api.get<ConversationListItem[]>('/api/v1/conversations/monitor')
+    return res.data ?? []
+  },
+
   async getHistory(): Promise<ConversationListItem[]> {
     const res = await api.get<ConversationListItem[]>('/api/v1/conversations/history')
     return res.data ?? []

@@ -57,6 +57,27 @@ public class ConversationRepository : IConversationRepository
         return conversations.Select(c => (c, counts.GetValueOrDefault(c.Id, 0))).ToList();
     }
 
+    public async Task<List<(Conversation Conv, int MessageCount)>> GetAllActiveListAsync()
+    {
+        var conversations = await _context.Conversations
+            .Include(c => c.Client)
+            .Include(c => c.Messages.OrderByDescending(m => m.CreatedAt).Take(1))
+            .Include(c => c.UserConversations)
+                .ThenInclude(uc => uc.User)
+            .Where(c => c.FinishedAt == null)
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+
+        var ids = conversations.Select(c => c.Id).ToList();
+        var counts = await _context.Messages
+            .Where(m => ids.Contains(m.ConversationId))
+            .GroupBy(m => m.ConversationId)
+            .Select(g => new { ConversationId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ConversationId, x => x.Count);
+
+        return conversations.Select(c => (c, counts.GetValueOrDefault(c.Id, 0))).ToList();
+    }
+
     public async Task<List<(Conversation Conv, int MessageCount)>> GetHistoryListAsync()
     {
         var conversations = await _context.Conversations

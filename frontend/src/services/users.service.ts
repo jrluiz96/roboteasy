@@ -11,6 +11,7 @@ export interface User {
   sessionAt: string | null
   createdAt: string
   deletedAt: string | null
+  isOnline: boolean
 }
 
 export interface Permission {
