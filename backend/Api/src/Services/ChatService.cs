@@ -74,7 +74,7 @@ public class ChatService : IChatService
         }
 
         var messages = conversation.Messages
-            .Select(m => new MessageResponse(m.Id, m.ConversationId, m.UserId, m.ClientId, m.Type, m.Content, m.FileUrl, m.CreatedAt))
+            .Select(m => new MessageResponse(m.Id, m.ConversationId, m.UserId, m.ClientId, m.Type, m.Content, m.User?.Name, m.FileUrl, m.CreatedAt))
             .ToList()
             .AsReadOnly();
 

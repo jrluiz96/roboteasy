@@ -15,6 +15,7 @@ export interface ConversationMessage {
   clientId: number | null
   type: number
   content: string
+  senderName: string | null
   fileUrl: string | null
   createdAt: string
 }
@@ -30,6 +31,7 @@ export interface ConversationListItem {
   createdAt: string
   finishedAt: string | null
   status: 'waiting' | 'active' | 'finished'
+  attendants: ConversationAttendant[]
 }
 
 export interface ConversationDetail {

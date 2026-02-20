@@ -9,6 +9,7 @@ public record MessageResponse(
     long? ClientId,
     MessageType Type,
     string Content,
+    string? SenderName,
     string? FileUrl,
     DateTime CreatedAt
 );

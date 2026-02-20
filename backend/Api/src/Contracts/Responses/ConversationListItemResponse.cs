@@ -11,5 +11,6 @@ public record ConversationListItemResponse(
     DateTime CreatedAt,
     DateTime? FinishedAt,
     /// <summary>waiting = sem atendente, active = com atendente, finished = encerrada</summary>
-    string Status
+    string Status,
+    IReadOnlyList<ConversationAttendantResponse> Attendants
 );

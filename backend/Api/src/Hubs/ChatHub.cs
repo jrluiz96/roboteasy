@@ -118,12 +118,12 @@ public class ChatHub : Hub
             CreatedAt = DateTime.UtcNow
         };
 
-        // Atendente: embute o nome no conteúdo para evitar falsificação no cliente
+        // Busca nome do remetente
+        string? senderName = null;
         if (userId != null)
         {
             var user = await _userRepository.GetByIdAsync(userId.Value);
-            if (user != null)
-                message.Content = $"{user.Username}\n{content}";
+            senderName = user?.Name;
         }
 
         await _messageRepository.CreateAsync(message);
@@ -147,6 +147,7 @@ public class ChatHub : Hub
                 message.ClientId,
                 message.Type,
                 message.Content,
+                SenderName = senderName,
                 message.CreatedAt
             });
     }

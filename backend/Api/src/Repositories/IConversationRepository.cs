@@ -10,10 +10,10 @@ public interface IConversationRepository
     Task<Conversation?> GetOpenByClientIdAsync(long clientId);
 
     /// <summary>Lista conversas visíveis ao atendente: waiting (todas) + active (só as vinculadas)</summary>
-    Task<List<Conversation>> GetActiveListAsync(int userId);
+    Task<List<(Conversation Conv, int MessageCount)>> GetActiveListAsync(int userId);
 
     /// <summary>Lista conversas finalizadas — aba Histórico do atendente</summary>
-    Task<List<Conversation>> GetHistoryListAsync();
+    Task<List<(Conversation Conv, int MessageCount)>> GetHistoryListAsync();
 
     /// <summary>Conversa com mensagens e atendentes vinculados</summary>
     Task<Conversation?> GetByIdWithMessagesAsync(long id);

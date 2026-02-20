@@ -172,8 +172,8 @@ function setupGlobalMessageListener() {
   })
 }
 
-async function selectConversation(id: number) {
-  if (selectedId.value === id) return
+async function selectConversation(id: number, forceReload = false) {
+  if (selectedId.value === id && !forceReload) return
   loadingChat.value = true
   selectedId.value = id
   // Limpa badge de não lidas desta conversa
@@ -221,7 +221,7 @@ async function pullConversation(id: number, e: Event) {
     // Atualiza status local
     const item = conversations.value.find(c => c.id === id)
     if (item) item.status = 'active'
-    await selectConversation(id)
+    await selectConversation(id, true)
     toastStore.success('Conversa puxada com sucesso')
   } catch {
     toastStore.error('Erro ao puxar conversa')
@@ -599,6 +599,9 @@ function initials(name: string) {
                   ? 'bg-purple-600 text-white rounded-br-sm'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-sm',
               ]">
+                <p v-if="msg.senderName" :class="['text-[11px] font-semibold mb-0.5', isMyMsg(msg) ? 'text-purple-200' : 'text-purple-500 dark:text-purple-400']">
+                  {{ msg.senderName }}
+                </p>
                 <p class="break-words leading-relaxed whitespace-pre-wrap">{{ msg.content }}</p>
                 <p :class="['text-xs mt-1 text-right', isMyMsg(msg) ? 'text-purple-200' : 'text-gray-400']">
                   {{ formatTime(msg.createdAt) }}

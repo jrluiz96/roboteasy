@@ -20,13 +20,13 @@ public class ConversationService : IConversationService
     public async Task<List<ConversationListItemResponse>> GetActiveAsync(int userId)
     {
         var conversations = await _repository.GetActiveListAsync(userId);
-        return conversations.Select(ToListItem).ToList();
+        return conversations.Select(x => ToListItem(x.Conv, x.MessageCount)).ToList();
     }
 
     public async Task<List<ConversationListItemResponse>> GetHistoryAsync()
     {
         var conversations = await _repository.GetHistoryListAsync();
-        return conversations.Select(ToListItem).ToList();
+        return conversations.Select(x => ToListItem(x.Conv, x.MessageCount)).ToList();
     }
 
     public async Task<ConversationDetailResponse?> GetByIdAsync(long id)
@@ -37,7 +37,7 @@ public class ConversationService : IConversationService
         var messages = conv.Messages
             .Select(m => new MessageResponse(
                 m.Id, m.ConversationId, m.UserId, m.ClientId,
-                m.Type, m.Content, m.FileUrl, m.CreatedAt))
+                m.Type, m.Content, m.User?.Name ?? m.Client?.Name, m.FileUrl, m.CreatedAt))
             .ToList();
 
         return new ConversationDetailResponse(
@@ -107,9 +107,18 @@ public class ConversationService : IConversationService
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private static ConversationListItemResponse ToListItem(Conversation conv)
+    private static ConversationListItemResponse ToListItem(Conversation conv, int messageCount)
     {
         var last = conv.Messages.FirstOrDefault();
+        var attendants = conv.UserConversations?
+            .Select(uc => uc.User)
+            .Where(u => u != null)
+            .DistinctBy(u => u.Id)
+            .Select(u => new ConversationAttendantResponse(u.Id, u.Name, u.AvatarUrl))
+            .ToList()
+            .AsReadOnly()
+            ?? (IReadOnlyList<ConversationAttendantResponse>)Array.Empty<ConversationAttendantResponse>();
+
         return new ConversationListItemResponse(
             conv.Id,
             conv.Client.Id,
@@ -117,10 +126,11 @@ public class ConversationService : IConversationService
             conv.Client.Email,
             last?.Content,
             last?.CreatedAt,
-            conv.Messages.Count,
+            messageCount,
             conv.CreatedAt,
             conv.FinishedAt,
-            ResolveStatus(conv)
+            ResolveStatus(conv),
+            attendants
         );
     }
 

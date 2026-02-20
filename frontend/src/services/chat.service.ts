@@ -36,6 +36,7 @@ export interface ChatMessage {
   clientId: number | null
   type: number
   content: string
+  senderName: string | null
   fileUrl: string | null
   createdAt: string
 }

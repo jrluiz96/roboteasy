@@ -6,6 +6,7 @@ import { chatService, type ChatMessage } from '@/services/chat.service'
 interface DisplayMessage {
   from: 'client' | 'agent'
   text: string
+  senderName: string | null
   time: string
 }
 
@@ -48,6 +49,7 @@ function toDisplayMsg(m: ChatMessage): DisplayMessage {
   return {
     from: m.clientId != null ? 'client' : 'agent',
     text: m.content,
+    senderName: m.senderName ?? null,
     time: new Date(m.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   }
 }
@@ -74,7 +76,7 @@ function registerMessageListener() {
   chatService.onMessage((msg: ChatMessage) => {
     if (msg.conversationId !== conversationId.value) return
     if (msg.clientId != null) return // eco da própria mensagem do cliente
-    messages.value.push({ from: 'agent', text: msg.content, time: now() })
+    messages.value.push({ from: 'agent', text: msg.content, senderName: msg.senderName ?? null, time: now() })
     scrollToBottom()
   })
 
@@ -84,6 +86,7 @@ function registerMessageListener() {
     messages.value.push({
       from: 'agent',
       text: 'O atendimento foi encerrado pelo operador. Obrigado pelo contato! 🙏',
+      senderName: null,
       time: now()
     })
     scrollToBottom()
@@ -125,6 +128,7 @@ onMounted(async () => {
       messages.value = [{
         from: 'agent',
         text: `Bem-vindo de volta, ${session.clientName}! 👋`,
+        senderName: null,
         time: now()
       }]
     }
@@ -173,6 +177,7 @@ async function submitForm() {
       messages.value = [{
         from: 'agent',
         text: `Olá, ${clientForm.value.name}! 👋 Um de nossos atendentes irá responder em breve!`,
+        senderName: null,
         time: now()
       }]
     }
@@ -210,7 +215,7 @@ async function sendMessage() {
   const text = messageInput.value.trim()
   if (!text || conversationId.value === null) return
 
-  messages.value.push({ from: 'client', text, time: now() })
+  messages.value.push({ from: 'client', text, senderName: null, time: now() })
   messageInput.value = ''
   scrollToBottom()
 
@@ -345,6 +350,9 @@ onUnmounted(() => {
                   ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-br-sm'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-sm'
               ]">
+                <p v-if="msg.from === 'agent' && msg.senderName" class="text-[11px] font-semibold text-purple-500 dark:text-purple-400 mb-0.5">
+                  {{ msg.senderName }}
+                </p>
                 <p>{{ msg.text }}</p>
                 <p :class="['text-xs mt-1', msg.from === 'client' ? 'text-white/60 text-right' : 'text-gray-400']">
                   {{ msg.time }}

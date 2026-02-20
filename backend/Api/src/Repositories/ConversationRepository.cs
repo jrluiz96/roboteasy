@@ -24,14 +24,15 @@ public class ConversationRepository : IConversationRepository
     {
         return await _context.Conversations
             .Include(c => c.Messages.OrderBy(m => m.CreatedAt))
+                .ThenInclude(m => m.User)
             .Where(c => c.ClientId == clientId && c.FinishedAt == null)
             .OrderByDescending(c => c.CreatedAt)
             .FirstOrDefaultAsync();
     }
 
-    public async Task<List<Conversation>> GetActiveListAsync(int userId)
+    public async Task<List<(Conversation Conv, int MessageCount)>> GetActiveListAsync(int userId)
     {
-        return await _context.Conversations
+        var conversations = await _context.Conversations
             .Include(c => c.Client)
             .Include(c => c.Messages.OrderByDescending(m => m.CreatedAt).Take(1))
             .Include(c => c.UserConversations)
@@ -45,11 +46,20 @@ public class ConversationRepository : IConversationRepository
                 ))
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
+
+        var ids = conversations.Select(c => c.Id).ToList();
+        var counts = await _context.Messages
+            .Where(m => ids.Contains(m.ConversationId))
+            .GroupBy(m => m.ConversationId)
+            .Select(g => new { ConversationId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ConversationId, x => x.Count);
+
+        return conversations.Select(c => (c, counts.GetValueOrDefault(c.Id, 0))).ToList();
     }
 
-    public async Task<List<Conversation>> GetHistoryListAsync()
+    public async Task<List<(Conversation Conv, int MessageCount)>> GetHistoryListAsync()
     {
-        return await _context.Conversations
+        var conversations = await _context.Conversations
             .Include(c => c.Client)
             .Include(c => c.Messages.OrderByDescending(m => m.CreatedAt).Take(1))
             .Include(c => c.UserConversations)
@@ -57,6 +67,15 @@ public class ConversationRepository : IConversationRepository
             .Where(c => c.FinishedAt != null)
             .OrderByDescending(c => c.FinishedAt)
             .ToListAsync();
+
+        var ids = conversations.Select(c => c.Id).ToList();
+        var counts = await _context.Messages
+            .Where(m => ids.Contains(m.ConversationId))
+            .GroupBy(m => m.ConversationId)
+            .Select(g => new { ConversationId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ConversationId, x => x.Count);
+
+        return conversations.Select(c => (c, counts.GetValueOrDefault(c.Id, 0))).ToList();
     }
 
     public async Task<Conversation?> GetByIdWithMessagesAsync(long id)
@@ -64,6 +83,9 @@ public class ConversationRepository : IConversationRepository
         return await _context.Conversations
             .Include(c => c.Client)
             .Include(c => c.Messages.OrderBy(m => m.CreatedAt))
+                .ThenInclude(m => m.User)
+            .Include(c => c.Messages)
+                .ThenInclude(m => m.Client)
             .Include(c => c.UserConversations)
                 .ThenInclude(uc => uc.User)
             .FirstOrDefaultAsync(c => c.Id == id);
