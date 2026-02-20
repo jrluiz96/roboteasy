@@ -13,12 +13,16 @@ const HUB_URL = import.meta.env.VITE_HUB_URL || '/hubs/chat'
 // ── Event name constants (must match backend ChatEvents.cs) ──────────────────
 
 export const ChatEvents = {
-  UserOnline:     'user:online',
-  UserOffline:    'user:offline',
-  ReceiveMessage: 'message:receive',
-  Typing:         'typing:start',
-  StopTyping:     'typing:stop',
-  MessageRead:    'message:read',
+  UserOnline:             'user:online',
+  UserOffline:            'user:offline',
+  ReceiveMessage:         'message:receive',
+  Typing:                 'typing:start',
+  StopTyping:             'typing:stop',
+  MessageRead:            'message:read',
+  ConversationFinished:   'conversation:finished',
+  ConversationInvited:    'conversation:invited',
+  ConversationCreated:    'conversation:created',
+  AttendantLeft:          'attendant:left',
 } as const
 
 export type ChatEvent = (typeof ChatEvents)[keyof typeof ChatEvents]
@@ -30,8 +34,9 @@ export interface ChatMessage {
   conversationId: number
   userId: number | null
   clientId: number | null
-  type: string
+  type: number
   content: string
+  fileUrl: string | null
   createdAt: string
 }
 
@@ -172,6 +177,22 @@ class ChatService {
     this._on(ChatEvents.MessageRead, handler)
   }
 
+  onConversationFinished(handler: (payload: { conversationId: number }) => void): void {
+    this._on(ChatEvents.ConversationFinished, handler)
+  }
+
+  onAttendantLeft(handler: (payload: { conversationId: number; userId: number; userName: string }) => void): void {
+    this._on(ChatEvents.AttendantLeft, handler)
+  }
+
+  onConversationInvited(handler: (payload: { conversationId: number }) => void): void {
+    this._on(ChatEvents.ConversationInvited, handler)
+  }
+
+  onConversationCreated(handler: (payload: { id: number; clientId: number; clientName: string; clientEmail: string | null; createdAt: string; status: string }) => void): void {
+    this._on(ChatEvents.ConversationCreated, handler)
+  }
+
   onUserOnline(handler: (payload: UserStatusPayload) => void): void {
     this._on(ChatEvents.UserOnline, handler)
   }
@@ -192,6 +213,16 @@ class ChatService {
   onReconnected(callback: () => void): void {
     if (!this.connection) return
     this.connection.onreconnected(() => callback())
+  }
+
+  onReconnecting(callback: () => void): void {
+    if (!this.connection) return
+    this.connection.onreconnecting(() => callback())
+  }
+
+  onClose(callback: () => void): void {
+    if (!this.connection) return
+    this.connection.onclose(() => callback())
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────

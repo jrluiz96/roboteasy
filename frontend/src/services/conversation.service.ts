@@ -2,6 +2,12 @@ import { api } from './api'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export interface ConversationAttendant {
+  userId: number
+  name: string
+  avatarUrl: string | null
+}
+
 export interface ConversationMessage {
   id: number
   conversationId: number
@@ -37,6 +43,7 @@ export interface ConversationDetail {
   attendanceTime: number | null
   status: 'waiting' | 'active' | 'finished'
   messages: ConversationMessage[]
+  attendants: ConversationAttendant[]
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -60,4 +67,14 @@ export const conversationService = {
   async finish(id: number): Promise<void> {
     await api.post(`/api/v1/conversations/${id}/finish`)
   },
-}
+  async join(id: number): Promise<void> {
+    await api.post(`/api/v1/conversations/${id}/join`, {})
+  },
+
+  async leave(id: number): Promise<void> {
+    await api.post(`/api/v1/conversations/${id}/leave`, {})
+  },
+
+  async invite(id: number, attendantId: number): Promise<void> {
+    await api.post(`/api/v1/conversations/${id}/invite/${attendantId}`, {})
+  },}

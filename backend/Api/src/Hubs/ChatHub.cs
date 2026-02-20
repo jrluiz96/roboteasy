@@ -43,6 +43,9 @@ public class ChatHub : Hub
                 await _context.SaveChangesAsync();
             }
 
+            // Entra no grupo de atendentes para receber novos chats
+            await Groups.AddToGroupAsync(Context.ConnectionId, "attendants");
+
             await Clients.Others.SendAsync(ChatEvents.UserOnline, new
             {
                 UserId = userId.Value,
@@ -126,6 +129,14 @@ public class ChatHub : Hub
             Content = content,
             CreatedAt = DateTime.UtcNow
         };
+
+        // Atendente: embute o nome no conteúdo para evitar falsificação no cliente
+        if (userId != null)
+        {
+            var user = await _context.Users.FindAsync(userId.Value);
+            if (user != null)
+                message.Content = $"{user.Username}\n{content}";
+        }
 
         _context.Messages.Add(message);
 

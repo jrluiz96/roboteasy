@@ -1,7 +1,9 @@
 using Api.Contracts.Requests;
 using Api.Contracts.Responses;
+using Api.Hubs;
 using Api.Models;
 using Api.Repositories;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Api.Services;
 
@@ -10,12 +12,14 @@ public class ChatService : IChatService
     private readonly IClientRepository _clientRepository;
     private readonly IConversationRepository _conversationRepository;
     private readonly IJwtService _jwtService;
+    private readonly IHubContext<ChatHub> _hub;
 
-    public ChatService(IClientRepository clientRepository, IConversationRepository conversationRepository, IJwtService jwtService)
+    public ChatService(IClientRepository clientRepository, IConversationRepository conversationRepository, IJwtService jwtService, IHubContext<ChatHub> hub)
     {
         _clientRepository = clientRepository;
         _conversationRepository = conversationRepository;
         _jwtService = jwtService;
+        _hub = hub;
     }
 
     public async Task<ChatStartResponse> StartAsync(ChatStartRequest request)
@@ -53,6 +57,21 @@ public class ChatService : IChatService
             ClientId = client.Id,
             CreatedAt = DateTime.UtcNow
         });
+
+        // Notifica todos os atendentes online sobre a nova conversa
+        if (isNew)
+        {
+            await _hub.Clients.Group("attendants")
+                .SendAsync(ChatEvents.ConversationCreated, new
+                {
+                    id          = conversation.Id,
+                    clientId    = client.Id,
+                    clientName  = client.Name,
+                    clientEmail = client.Email,
+                    createdAt   = conversation.CreatedAt,
+                    status      = "waiting"
+                });
+        }
 
         var messages = conversation.Messages
             .Select(m => new MessageResponse(m.Id, m.ConversationId, m.UserId, m.ClientId, m.Type, m.Content, m.FileUrl, m.CreatedAt))

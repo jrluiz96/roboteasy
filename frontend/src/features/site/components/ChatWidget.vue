@@ -29,6 +29,7 @@ const conversationId = ref<number | null>(null)
 const messages = ref<DisplayMessage[]>([])
 const messageInput = ref('')
 const messagesEnd = ref<HTMLElement | null>(null)
+const conversationClosed = ref(false)
 
 // --- Helpers ---
 function now() {
@@ -75,6 +76,18 @@ function registerMessageListener() {
     if (msg.clientId != null) return // eco da própria mensagem do cliente
     messages.value.push({ from: 'agent', text: msg.content, time: now() })
     scrollToBottom()
+  })
+
+  chatService.onConversationFinished(({ conversationId: closedId }) => {
+    if (closedId !== conversationId.value) return
+    conversationClosed.value = true
+    messages.value.push({
+      from: 'agent',
+      text: 'O atendimento foi encerrado pelo operador. Obrigado pelo contato! 🙏',
+      time: now()
+    })
+    scrollToBottom()
+    clearSession()
   })
 }
 
@@ -188,6 +201,7 @@ function endChat() {
   chatService.disconnect()
   conversationId.value = null
   messages.value = []
+  conversationClosed.value = false
   clientForm.value = { name: '', email: '', phone: '', cpf: '' }
   chatStep.value = 'form'
 }
@@ -340,22 +354,37 @@ onUnmounted(() => {
             <div ref="messagesEnd"></div>
           </div>
 
-          <!-- Input -->
-          <div class="border-t border-gray-200 dark:border-gray-700 px-3 py-2 flex items-end gap-2 flex-shrink-0">
-            <textarea
-              v-model="messageInput"
-              @keydown="handleKey"
-              rows="1"
-              placeholder="Digite sua mensagem..."
-              class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-800 dark:text-white resize-none"
-            />
-            <button
-              @click="sendMessage"
-              :disabled="!messageInput.trim()"
-              class="w-9 h-9 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl flex items-center justify-center transition disabled:opacity-40 flex-shrink-0"
-            >
-              <i class="fas fa-paper-plane text-xs"></i>
-            </button>
+          <!-- Input ou Banner de encerrado -->
+          <div class="border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <!-- Conversa encerrada -->
+            <div v-if="conversationClosed" class="px-4 py-3 flex flex-col items-center gap-2 text-center bg-gray-50 dark:bg-gray-800/60">
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                <i class="fas fa-lock mr-1 text-gray-400"></i>Atendimento encerrado
+              </p>
+              <button
+                @click="endChat"
+                class="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition"
+              >
+                Iniciar novo atendimento
+              </button>
+            </div>
+            <!-- Input normal -->
+            <div v-else class="px-3 py-2 flex items-end gap-2">
+              <textarea
+                v-model="messageInput"
+                @keydown="handleKey"
+                rows="1"
+                placeholder="Digite sua mensagem..."
+                class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-800 dark:text-white resize-none"
+              />
+              <button
+                @click="sendMessage"
+                :disabled="!messageInput.trim()"
+                class="w-9 h-9 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl flex items-center justify-center transition disabled:opacity-40 flex-shrink-0"
+              >
+                <i class="fas fa-paper-plane text-xs"></i>
+              </button>
+            </div>
           </div>
         </div>
 

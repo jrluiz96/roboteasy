@@ -19,4 +19,10 @@ public static class ChatEvents
 
     // Leitura
     public const string MessageRead = "message:read";
+
+    // Conversa
+    public const string ConversationFinished  = "conversation:finished";
+    public const string ConversationInvited   = "conversation:invited";
+    public const string ConversationCreated   = "conversation:created";
+    public const string AttendantLeft         = "attendant:left";
 }

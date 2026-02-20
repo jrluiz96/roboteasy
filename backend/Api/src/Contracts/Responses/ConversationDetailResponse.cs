@@ -10,5 +10,6 @@ public record ConversationDetailResponse(
     DateTime? FinishedAt,
     int? AttendanceTime,
     string Status,
-    IReadOnlyList<MessageResponse> Messages
+    IReadOnlyList<MessageResponse> Messages,
+    IReadOnlyList<ConversationAttendantResponse> Attendants
 );

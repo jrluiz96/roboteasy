@@ -5,12 +5,16 @@ import {
   type ConversationListItem,
   type ConversationDetail,
   type ConversationMessage,
+  type ConversationAttendant,
 } from '@/services/conversation.service'
 import { chatService } from '@/services/chat.service'
 import { api } from '@/services/api'
+import { usersService, type User } from '@/services/users.service'
+import { useAuthStore } from '@/features/auth/stores/authStore'
 import { useToastStore } from '@/stores/toastStore'
 
 const toastStore = useToastStore()
+const authStore  = useAuthStore()
 
 // State
 const activeTab     = ref<'chats' | 'history'>('chats')
@@ -23,19 +27,37 @@ const messagesEl    = ref<HTMLElement | null>(null)
 const loadingList   = ref(false)
 const loadingChat   = ref(false)
 const sending       = ref(false)
-const wsConnected   = ref(false)
+const wsStatus      = ref<'connected' | 'reconnecting' | 'disconnected'>('disconnected')
 // Mensagens não lidas por conversa (conversas que não estão selecionadas)
 const unreadCounts  = ref<Record<number, number>>({})
+// Modal de convite de atendente
+const showInviteModal = ref(false)
+const allUsers        = ref<User[]>([])
+const loadingUsers    = ref(false)
+const pullingId       = ref<number | null>(null) // id em processo de "puxar"
 
 const visibleList = computed(() =>
   activeTab.value === 'chats' ? conversations.value : history.value
 )
 
+// Atendentes já na conversa para filtrar no modal
+const currentAttendants = computed(() => conversation.value?.attendants ?? [])
+
+// True quando o operador logado já entrou (puxou) esta conversa
+const isMember = computed(() =>
+  currentAttendants.value.some(a => a.userId === authStore.currentUser?.id)
+)
+// Usuários que ainda não estão na conversa (para o modal de convite)
+const invitableUsers = computed(() => {
+  const linked = new Set(currentAttendants.value.map(a => a.userId))
+  return allUsers.value.filter(u => !linked.has(u.id))
+})
+
 // Lifecycle
 onMounted(async () => {
   await loadLists()
   await connectWs()
-  if (wsConnected.value) {
+  if (wsStatus.value === 'connected') {
     // Entra em todos os grupos para receber notificações de qualquer conversa
     await joinAllConversations()
     setupGlobalMessageListener()
@@ -76,8 +98,8 @@ function setupGlobalMessageListener() {
       item.lastMessage    = msg.content
       item.lastMessageAt  = msg.createdAt
       if (msg.clientId !== null) {
-        // Cliente enviou → aguardando resposta do atendente
-        item.status = 'waiting'
+        // Cliente enviou → só marca "aguardando" se ainda não há atendente vinculado
+        if (item.status !== 'active') item.status = 'waiting'
       } else if (msg.userId !== null) {
         // Atendente respondeu → em atendimento
         item.status = 'active'
@@ -95,6 +117,58 @@ function setupGlobalMessageListener() {
       unreadCounts.value[msg.conversationId] =
         (unreadCounts.value[msg.conversationId] ?? 0) + 1
     }
+  })
+
+  chatService.onAttendantLeft(({ conversationId: convId, userId: uid, userName }) => {
+    // Remove da barra de atendentes
+    if (conversation.value && conversation.value.id === convId) {
+      conversation.value.attendants = conversation.value.attendants.filter(a => a.userId !== uid)
+    }
+    // Injeta mensagem de sistema na conversa aberta
+    if (selectedId.value === convId && conversation.value) {
+      pushSystemMessage(convId, `${userName} saiu da conversa`)
+    }
+  })
+
+  chatService.onConversationInvited(async ({ conversationId: convId }) => {
+    // Entra no grupo SignalR para receber mensagens em tempo real
+    await chatService.joinConversation(convId)
+    // Busca o detalhe e monta um item da lista
+    const detail = await conversationService.getById(convId)
+    if (!detail) return
+    // Evita duplicatas
+    if (conversations.value.some(c => c.id === convId)) return
+    conversations.value.unshift({
+      id:            detail.id,
+      clientId:      detail.clientId,
+      clientName:    detail.clientName,
+      clientEmail:   detail.clientEmail,
+      lastMessage:   detail.messages.at(-1)?.content ?? null,
+      lastMessageAt: detail.messages.at(-1)?.createdAt ?? null,
+      messageCount:  detail.messages.length,
+      createdAt:     detail.createdAt,
+      finishedAt:    detail.finishedAt,
+      status:        detail.status,
+    })
+  })
+
+  chatService.onConversationCreated(async (payload) => {
+    // Evita duplicatas
+    if (conversations.value.some(c => c.id === payload.id)) return
+    // Entra no grupo para monitorar em tempo real
+    await chatService.joinConversation(payload.id)
+    conversations.value.unshift({
+      id:            payload.id,
+      clientId:      payload.clientId,
+      clientName:    payload.clientName,
+      clientEmail:   payload.clientEmail,
+      lastMessage:   null,
+      lastMessageAt: null,
+      messageCount:  0,
+      createdAt:     payload.createdAt,
+      finishedAt:    null,
+      status:        'waiting',
+    })
   })
 }
 
@@ -119,7 +193,7 @@ async function selectConversation(id: number) {
 // Messaging
 async function sendMessage() {
   const content = messageInput.value.trim()
-  if (!content || !selectedId.value || sending.value) return
+  if (!content || !selectedId.value || sending.value || !isMember.value) return
   sending.value = true
   messageInput.value = ''
   try {
@@ -136,22 +210,87 @@ async function sendMessage() {
   }
 }
 
-// Finish
-async function finishConversation() {
+// Pull (puxar conversa para si)
+async function pullConversation(id: number, e: Event) {
+  e.stopPropagation() // evita também disparar selectConversation no item
+  pullingId.value = id
+  try {
+    await conversationService.join(id)
+    // Entra no grupo SignalR se ainda não entrou
+    if (wsStatus.value === 'connected') await chatService.joinConversation(id)
+    // Atualiza status local
+    const item = conversations.value.find(c => c.id === id)
+    if (item) item.status = 'active'
+    await selectConversation(id)
+    toastStore.success('Conversa puxada com sucesso')
+  } catch {
+    toastStore.error('Erro ao puxar conversa')
+  } finally {
+    pullingId.value = null
+  }
+}
+
+// Modal de convite
+async function openInviteModal() {
+  showInviteModal.value = true
+  if (allUsers.value.length > 0) return
+  loadingUsers.value = true
+  try {
+    const res = await usersService.getAll()
+    allUsers.value = res
+  } catch {
+    toastStore.error('Erro ao carregar atendentes')
+  } finally {
+    loadingUsers.value = false
+  }
+}
+
+async function doInvite(attendant: User) {
   if (!selectedId.value || !conversation.value) return
   try {
-    await conversationService.finish(selectedId.value)
-    toastStore.success('Conversa finalizada')
-    const idx = conversations.value.findIndex(c => c.id === selectedId.value)
-    if (idx !== -1) {
-      const finished = { ...conversations.value[idx], status: 'finished' as const, finishedAt: new Date().toISOString() }
-      conversations.value.splice(idx, 1)
-      history.value.unshift(finished)
+    await conversationService.invite(selectedId.value, attendant.id)
+    // Adiciona localmente para feedback imediato
+    const already = conversation.value.attendants.some(a => a.userId === attendant.id)
+    if (!already) {
+      conversation.value.attendants.push({ userId: attendant.id, name: attendant.name, avatarUrl: attendant.avatarUrl })
     }
-    conversation.value.status = 'finished'
-    conversation.value.finishedAt = new Date().toISOString()
+    toastStore.success(`${attendant.name} adicionado à conversa`)
   } catch {
-    toastStore.error('Erro ao finalizar conversa')
+    toastStore.error('Erro ao convidar atendente')
+  }
+}
+
+// Finish / Leave
+// - Último atendente (ou sem atendente): finaliza toda a conversa
+// - Múltiplos atendentes: apenas sai da conversa
+async function finishConversation() {
+  if (!selectedId.value || !conversation.value) return
+  const isLastAttendant = conversation.value.attendants.length <= 1
+
+  try {
+    if (isLastAttendant) {
+      // Finaliza a conversa inteira
+      await conversationService.finish(selectedId.value)
+      toastStore.success('Conversa finalizada')
+      const idx = conversations.value.findIndex(c => c.id === selectedId.value)
+      if (idx !== -1) {
+        const finished = { ...conversations.value[idx], status: 'finished' as const, finishedAt: new Date().toISOString() }
+        conversations.value.splice(idx, 1)
+        history.value.unshift(finished)
+      }
+      conversation.value.status = 'finished'
+      conversation.value.finishedAt = new Date().toISOString()
+    } else {
+      // Sai da conversa (outros atendentes continuam)
+      await conversationService.leave(selectedId.value)
+      toastStore.success('Você saiu da conversa')
+      // Remove da lista (não é mais visível para este atendente)
+      conversations.value = conversations.value.filter(c => c.id !== selectedId.value)
+      selectedId.value = null
+      conversation.value = null
+    }
+  } catch {
+    toastStore.error('Erro ao finalizar')
   }
 }
 
@@ -161,13 +300,44 @@ async function connectWs() {
   if (!token) return
   try {
     await chatService.connectAsUser(token)
-    wsConnected.value = true
+    wsStatus.value = 'connected'
+
+    chatService.onReconnecting(() => {
+      wsStatus.value = 'reconnecting'
+    })
+    chatService.onReconnected(async () => {
+      wsStatus.value = 'connected'
+      // Re-entra nos grupos após reconexão
+      for (const conv of conversations.value) {
+        await chatService.joinConversation(conv.id)
+      }
+    })
+    chatService.onClose(() => {
+      wsStatus.value = 'disconnected'
+    })
   } catch {
+    wsStatus.value = 'disconnected'
     toastStore.warning('WebSocket indisponivel - tempo real desativado')
   }
 }
 
 // Helpers
+// Injeta mensagem de sistema local (não salva no banco, apenas UI)
+function pushSystemMessage(convId: number, text: string) {
+  if (!conversation.value || conversation.value.id !== convId) return
+  conversation.value.messages.push({
+    id: -Date.now(),          // id negativo → nunca conflita com ids reais
+    conversationId: convId,
+    userId: null,
+    clientId: null,
+    type: 99,                 // 99 = system (local only)
+    content: text,
+    fileUrl: null,
+    createdAt: new Date().toISOString(),
+  })
+  scrollBottom()
+}
+
 function scrollBottom() {
   nextTick(() => { if (messagesEl.value) messagesEl.value.scrollTop = messagesEl.value.scrollHeight })
 }
@@ -196,9 +366,13 @@ function initials(name: string) {
         <p class="text-sm text-gray-500 dark:text-gray-400">Chat em tempo real com clientes</p>
       </div>
       <div class="flex items-center gap-3 text-xs">
-        <span v-if="wsConnected" class="flex items-center gap-1.5 text-green-500 font-medium">
+        <span v-if="wsStatus === 'connected'" class="flex items-center gap-1.5 text-green-500 font-medium">
           <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
           WebSocket conectado
+        </span>
+        <span v-else-if="wsStatus === 'reconnecting'" class="flex items-center gap-1.5 text-yellow-400 font-medium">
+          <span class="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>
+          Reconectando...
         </span>
         <span v-else class="flex items-center gap-1.5 text-gray-400">
           <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
@@ -264,10 +438,9 @@ function initials(name: string) {
             v-else
             v-for="conv in visibleList"
             :key="conv.id"
-            @click="activeTab === 'chats' ? selectConversation(conv.id) : undefined"
+            @click="selectConversation(conv.id)"
             :class="[
-              'w-full text-left px-4 py-3 border-b border-gray-100 dark:border-gray-700/60 transition',
-              activeTab === 'chats' ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40' : 'cursor-default',
+              'w-full text-left px-4 py-3 border-b border-gray-100 dark:border-gray-700/60 transition cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40',
               selectedId === conv.id
                 ? 'bg-purple-50 dark:bg-purple-900/20 border-l-[3px] border-l-purple-500 pl-[13px]'
                 : unreadCounts[conv.id] > 0
@@ -306,6 +479,17 @@ function initials(name: string) {
                 </p>
               </div>
             </div>
+            <!-- Botão Puxar — aparece para conversas que ainda não têm atendente -->
+            <div v-if="conv.status === 'waiting' && activeTab === 'chats'" class="mt-2 flex justify-end">
+              <button
+                @click.stop="pullConversation(conv.id, $event)"
+                :disabled="pullingId === conv.id"
+                class="text-xs px-2.5 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-lg transition font-medium flex items-center gap-1"
+              >
+                <i :class="pullingId === conv.id ? 'fas fa-spinner fa-spin' : 'fas fa-hand-pointer'"></i>
+                {{ pullingId === conv.id ? 'Puxando...' : 'Puxar' }}
+              </button>
+            </div>
           </button>
         </div>
       </div>
@@ -328,13 +512,13 @@ function initials(name: string) {
         <template v-else-if="conversation">
 
           <!-- Header do chat -->
-          <div class="flex-shrink-0 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+          <div class="flex-shrink-0 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                 <span class="text-sm font-bold text-purple-600 dark:text-purple-400">{{ initials(conversation.clientName) }}</span>
               </div>
-              <div>
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ conversation.clientName }}</p>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ conversation.clientName }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
                   {{ conversation.clientEmail || conversation.clientPhone || '' }}
                   &nbsp;&middot;&nbsp;
@@ -344,16 +528,53 @@ function initials(name: string) {
                 </p>
               </div>
             </div>
-            <button
-              v-if="conversation.status !== 'finished'"
-              @click="finishConversation"
-              class="px-3 py-1.5 text-xs bg-red-500 hover:bg-red-600 text-white rounded-lg transition flex items-center gap-1.5 font-medium"
-            >
-              <i class="fas fa-times-circle"></i> Finalizar
-            </button>
-            <span v-else class="text-xs text-gray-400 flex items-center gap-1">
-              <i class="fas fa-lock"></i> Finalizada
-            </span>
+
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <!-- Avatares dos atendentes vinculados -->
+              <div v-if="conversation.attendants.length > 0" class="flex items-center -space-x-2">
+                <div
+                  v-for="att in conversation.attendants"
+                  :key="att.userId"
+                  :title="att.name"
+                  class="w-7 h-7 rounded-full bg-indigo-500 border-2 border-white dark:border-gray-800 flex items-center justify-center"
+                >
+                  <img v-if="att.avatarUrl" :src="att.avatarUrl" :alt="att.name" class="w-full h-full rounded-full object-cover" />
+                  <span v-else class="text-[10px] font-bold text-white leading-none">{{ att.name[0].toUpperCase() }}</span>
+                </div>
+              </div>
+
+              <!-- Chamar atendente -->
+              <button
+                v-if="conversation.status !== 'finished'"
+                @click="openInviteModal"
+                :disabled="!isMember"
+                class="px-2.5 py-1.5 text-xs bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition flex items-center gap-1.5 font-medium"
+                :title="isMember ? 'Chamar atendente' : 'Puxe a conversa primeiro'"
+              >
+                <i class="fas fa-user-plus"></i>
+                <span class="hidden sm:inline">Chamar</span>
+              </button>
+
+              <!-- Finalizar / Sair -->
+              <button
+                v-if="conversation.status !== 'finished'"
+                @click="finishConversation"
+                :disabled="!isMember"
+                :class="[
+                  'px-3 py-1.5 text-xs text-white rounded-lg transition flex items-center gap-1.5 font-medium disabled:opacity-40 disabled:cursor-not-allowed',
+                  conversation.attendants.length > 1
+                    ? 'bg-orange-500 hover:bg-orange-600'
+                    : 'bg-red-500 hover:bg-red-600'
+                ]"
+                :title="!isMember ? 'Puxe a conversa primeiro' : conversation.attendants.length > 1 ? 'Sair da conversa (outros atendentes permanecem)' : 'Finalizar conversa com o cliente'"
+              >
+                <i :class="conversation.attendants.length > 1 ? 'fas fa-sign-out-alt' : 'fas fa-times-circle'"></i>
+                {{ conversation.attendants.length > 1 ? 'Sair' : 'Finalizar' }}
+              </button>
+              <span v-else class="text-xs text-gray-400 flex items-center gap-1">
+                <i class="fas fa-lock"></i> Finalizada
+              </span>
+            </div>
           </div>
 
           <!-- Mensagens -->
@@ -365,15 +586,20 @@ function initials(name: string) {
             <div
               v-for="msg in conversation.messages"
               :key="msg.id"
-              :class="['flex', isMyMsg(msg) ? 'justify-end' : 'justify-start']"
+              :class="['flex', msg.type === 99 ? 'justify-center' : isMyMsg(msg) ? 'justify-end' : 'justify-start']"
             >
-              <div :class="[
+              <!-- Mensagem de sistema -->
+              <div v-if="msg.type === 99" class="text-xs text-gray-400 dark:text-gray-500 italic bg-gray-100 dark:bg-gray-700/50 px-3 py-1 rounded-full">
+                {{ msg.content }}
+              </div>
+              <!-- Mensagem normal -->
+              <div v-else :class="[
                 'max-w-xs lg:max-w-sm px-3 py-2 rounded-2xl text-sm shadow-sm',
                 isMyMsg(msg)
                   ? 'bg-purple-600 text-white rounded-br-sm'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-sm',
               ]">
-                <p class="break-words leading-relaxed">{{ msg.content }}</p>
+                <p class="break-words leading-relaxed whitespace-pre-wrap">{{ msg.content }}</p>
                 <p :class="['text-xs mt-1 text-right', isMyMsg(msg) ? 'text-purple-200' : 'text-gray-400']">
                   {{ formatTime(msg.createdAt) }}
                 </p>
@@ -382,7 +608,7 @@ function initials(name: string) {
           </div>
 
           <!-- Input -->
-          <div v-if="conversation.status !== 'finished'" class="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+          <div v-if="conversation.status !== 'finished' && isMember" class="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2">
             <input
               v-model="messageInput"
               @keyup.enter="sendMessage"
@@ -398,6 +624,9 @@ function initials(name: string) {
               <i :class="sending ? 'fas fa-spinner fa-spin' : 'fas fa-paper-plane'"></i>
             </button>
           </div>
+          <div v-else-if="conversation.status !== 'finished' && !isMember" class="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 text-center text-xs text-gray-400 dark:text-gray-500">
+            <i class="fas fa-hand-pointer mr-1"></i> Puxe a conversa para poder interagir
+          </div>
           <div v-else class="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 text-center text-xs text-gray-400 dark:text-gray-500">
             <i class="fas fa-lock mr-1"></i> Esta conversa foi encerrada
           </div>
@@ -406,4 +635,72 @@ function initials(name: string) {
       </div>
     </div>
   </div>
+
+  <!-- Modal: Chamar atendente -->
+  <Teleport to="body">
+    <div
+      v-if="showInviteModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      @click.self="showInviteModal = false"
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <!-- Header modal -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">
+            <i class="fas fa-user-plus mr-2 text-indigo-500"></i>Chamar atendente
+          </h3>
+          <button @click="showInviteModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Atendentes já na conversa -->
+        <div v-if="currentAttendants.length > 0" class="px-5 pt-4">
+          <p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-2">Na conversa</p>
+          <div class="flex flex-wrap gap-2 mb-3">
+            <span
+              v-for="att in currentAttendants"
+              :key="att.userId"
+              class="flex items-center gap-1.5 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-full"
+            >
+              <i class="fas fa-check-circle"></i>{{ att.name }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Lista de usuários para convidar -->
+        <div class="px-5 py-3 max-h-72 overflow-y-auto">
+          <p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-2">Convidar</p>
+          <div v-if="loadingUsers" class="text-center py-6 text-gray-400">
+            <i class="fas fa-spinner fa-spin text-xl"></i>
+          </div>
+          <div v-else-if="invitableUsers.length === 0" class="text-center py-6 text-sm text-gray-400">
+            Todos os atendentes já estão na conversa
+          </div>
+          <button
+            v-else
+            v-for="user in invitableUsers"
+            :key="user.id"
+            @click="doInvite(user)"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition text-left"
+          >
+            <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center flex-shrink-0">
+              <img v-if="user.avatarUrl" :src="user.avatarUrl" class="w-full h-full rounded-full object-cover" />
+              <span v-else class="text-xs font-bold text-white">{{ user.name[0].toUpperCase() }}</span>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ user.name }}</p>
+              <p class="text-xs text-gray-400">{{ user.username }}</p>
+            </div>
+          </button>
+        </div>
+
+        <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+          <button @click="showInviteModal = false" class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>

@@ -1,21 +1,25 @@
 using Api.Contracts.Responses;
+using Api.Hubs;
 using Api.Models;
 using Api.Repositories;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Api.Services;
 
 public class ConversationService : IConversationService
 {
     private readonly IConversationRepository _repository;
+    private readonly IHubContext<ChatHub> _hub;
 
-    public ConversationService(IConversationRepository repository)
+    public ConversationService(IConversationRepository repository, IHubContext<ChatHub> hub)
     {
         _repository = repository;
+        _hub = hub;
     }
 
-    public async Task<List<ConversationListItemResponse>> GetActiveAsync()
+    public async Task<List<ConversationListItemResponse>> GetActiveAsync(int userId)
     {
-        var conversations = await _repository.GetActiveListAsync();
+        var conversations = await _repository.GetActiveListAsync(userId);
         return conversations.Select(ToListItem).ToList();
     }
 
@@ -46,14 +50,59 @@ public class ConversationService : IConversationService
             conv.FinishedAt,
             conv.AttendanceTime,
             ResolveStatus(conv),
-            messages
+            messages,
+            conv.UserConversations
+                .Where(uc => uc.FinishedAt == null)
+                .Select(uc => new ConversationAttendantResponse(uc.UserId, uc.User.Name, null))
+                .ToList()
+                .AsReadOnly()
         );
     }
 
     public async Task<bool> FinishAsync(long id)
     {
         var result = await _repository.FinishAsync(id);
-        return result != null;
+        if (result == null) return false;
+
+        // Notifica todos os participantes do grupo (incluindo o cliente)
+        await _hub.Clients
+            .Group($"conversation:{id}")
+            .SendAsync(ChatEvents.ConversationFinished, new { conversationId = id });
+
+        return true;
+    }
+
+    public Task<bool> JoinAsync(long id, int userId)
+        => _repository.JoinAsync(id, userId);
+
+    public async Task<bool> InviteAttendantAsync(long id, int invitedUserId)
+    {
+        var (success, wsConn) = await _repository.InviteAttendantAsync(id, invitedUserId);
+        if (!success) return false;
+
+        // Notifica o atendente convidado em tempo real (se estiver online)
+        if (wsConn != null)
+            await _hub.Clients.Client(wsConn)
+                .SendAsync(ChatEvents.ConversationInvited, new { conversationId = id });
+
+        return true;
+    }
+
+    public async Task<bool> LeaveAsync(long id, int userId)
+    {
+        var userName = await _repository.LeaveAsync(id, userId);
+        if (userName == null) return false;
+
+        await _hub.Clients
+            .Group($"conversation:{id}")
+            .SendAsync(ChatEvents.AttendantLeft, new
+            {
+                conversationId = id,
+                userId,
+                userName
+            });
+
+        return true;
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
