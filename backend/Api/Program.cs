@@ -11,8 +11,13 @@ builder.Services.AddApplicationServices(builder.Configuration);
 // Controllers
 builder.Services.AddControllers();
 
-// SignalR
-builder.Services.AddSignalR();
+// SignalR — serializa payloads em camelCase para o cliente JS
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.PropertyNamingPolicy =
+            System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
 // CORS para WebSocket (SignalR não aceita wildcard com credentials)
 var corsOrigins = builder.Configuration["AppSettings:CorsOrigins"] ?? "*";

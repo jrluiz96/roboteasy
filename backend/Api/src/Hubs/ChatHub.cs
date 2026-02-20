@@ -128,6 +128,25 @@ public class ChatHub : Hub
         };
 
         _context.Messages.Add(message);
+
+        // Se é atendente e ainda não tem UserConversation ativa, cria uma
+        if (userId != null)
+        {
+            var alreadyJoined = await _context.Set<UserConversation>()
+                .AnyAsync(uc => uc.ConversationId == conversationId
+                             && uc.UserId == userId.Value
+                             && uc.FinishedAt == null);
+            if (!alreadyJoined)
+            {
+                _context.Set<UserConversation>().Add(new UserConversation
+                {
+                    UserId         = userId.Value,
+                    ConversationId = conversationId,
+                    StartedAt      = DateTime.UtcNow
+                });
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         await Clients.Group(ConversationGroup(conversationId))

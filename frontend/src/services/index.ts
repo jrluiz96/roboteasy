@@ -3,3 +3,4 @@ export { authService, type LoginRequest, type LoginResponse } from './auth.servi
 export { sessionService, type Session } from './session.service'
 export { usersService, type User, type CreateUserRequest, type UpdateUserRequest } from './users.service'
 export { chatService, ChatEvents, type ChatMessage, type TypingPayload, type MessageReadPayload, type UserStatusPayload } from './chat.service'
+export { conversationService, type ConversationListItem, type ConversationDetail, type ConversationMessage } from './conversation.service'

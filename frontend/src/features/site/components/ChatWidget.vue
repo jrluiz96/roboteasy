@@ -13,6 +13,7 @@ interface ChatSession {
   clientToken: string
   conversationId: number
   clientName: string
+  clientEmail: string
 }
 
 const STORAGE_KEY = 'chat_session'
@@ -77,10 +78,14 @@ function registerMessageListener() {
   })
 }
 
-// Conecta o WebSocket e entra na sala — usado tanto no submit quanto no F5
+// Conecta o WebSocket e entra na sala — re-registra ao reconectar
 async function connectToConversation(clientToken: string, convId: number) {
   await chatService.connectAsClient(clientToken)
   await chatService.joinConversation(convId)
+  // Re-entra no grupo sempre que o SignalR reconectar automaticamente
+  chatService.onReconnected(async () => {
+    await chatService.joinConversation(convId)
+  })
   registerMessageListener()
 }
 
@@ -90,16 +95,37 @@ onMounted(async () => {
   if (!session) return // sem sessão → fica no formulário, nada a fazer
 
   try {
-    conversationId.value = session.conversationId
-    clientForm.value.name = session.clientName
-    await connectToConversation(session.clientToken, session.conversationId)
+    clientForm.value.name  = session.clientName
+    clientForm.value.email = session.clientEmail
+
+    // Re-chama start() para obter histórico real + novo token + reconectar WS
+    const result = await chatService.start({
+      name:  session.clientName,
+      email: session.clientEmail,
+    })
+
+    conversationId.value = result.conversationId
+
+    if (result.messages.length > 0) {
+      messages.value = result.messages.map(toDisplayMsg)
+    } else {
+      messages.value = [{
+        from: 'agent',
+        text: `Bem-vindo de volta, ${session.clientName}! 👋`,
+        time: now()
+      }]
+    }
+
+    // Persiste sessão atualizada (novo token)
+    saveSession({
+      clientToken: result.clientToken,
+      conversationId: result.conversationId,
+      clientName: session.clientName,
+      clientEmail: session.clientEmail,
+    })
+
+    await connectToConversation(result.clientToken, result.conversationId)
     chatStep.value = 'chat'
-    // histórico será carregado via start() normalmente; aqui só reconecta o WS
-    messages.value = [{
-      from: 'agent',
-      text: `Bem-vindo de volta, ${session.clientName}! 👋`,
-      time: now()
-    }]
     scrollToBottom()
   } catch {
     // token expirado ou erro → limpa sessão e volta ao formulário
@@ -142,7 +168,8 @@ async function submitForm() {
     saveSession({
       clientToken: result.clientToken,
       conversationId: result.conversationId,
-      clientName: clientForm.value.name
+      clientName: clientForm.value.name,
+      clientEmail: clientForm.value.email,
     })
 
     await connectToConversation(result.clientToken, result.conversationId)

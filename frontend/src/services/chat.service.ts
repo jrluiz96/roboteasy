@@ -13,12 +13,12 @@ const HUB_URL = import.meta.env.VITE_HUB_URL || '/hubs/chat'
 // ── Event name constants (must match backend ChatEvents.cs) ──────────────────
 
 export const ChatEvents = {
-  UserOnline:     'UserOnline',
-  UserOffline:    'UserOffline',
-  ReceiveMessage: 'ReceiveMessage',
-  Typing:         'Typing',
-  StopTyping:     'StopTyping',
-  MessageRead:    'MessageRead',
+  UserOnline:     'user:online',
+  UserOffline:    'user:offline',
+  ReceiveMessage: 'message:receive',
+  Typing:         'typing:start',
+  StopTyping:     'typing:stop',
+  MessageRead:    'message:read',
 } as const
 
 export type ChatEvent = (typeof ChatEvents)[keyof typeof ChatEvents]
@@ -74,13 +74,21 @@ export interface ChatStartResponse {
 
 class ChatService {
   private connection: HubConnection | null = null
+  // Deduplicação: evita criar múltiplas conversas se start() for chamado em paralelo
+  private _startPromise: Promise<ChatStartResponse> | null = null
 
   // ── REST ───────────────────────────────────────────────────────────────────
 
   async start(data: ChatStartRequest): Promise<ChatStartResponse> {
-    const response = await api.post<ChatStartResponse>('/api/v1/open/chat/start', data)
-    if (response.code === 200 && response.data) return response.data
-    throw new Error(response.message || 'Erro ao iniciar atendimento')
+    if (this._startPromise) return this._startPromise
+    this._startPromise = api
+      .post<ChatStartResponse>('/api/v1/open/chat/start', data)
+      .then((response) => {
+        if (response.code === 200 && response.data) return response.data
+        throw new Error(response.message || 'Erro ao iniciar atendimento')
+      })
+      .finally(() => { this._startPromise = null })
+    return this._startPromise
   }
 
   // ── Connection ─────────────────────────────────────────────────────────────
@@ -175,6 +183,15 @@ class ChatService {
   /** Remove all listeners for an event (useful on component unmount). */
   off(event: ChatEvent): void {
     this.connection?.off(event)
+  }
+
+  /**
+   * Callback disparado sempre que o SignalR reconectar automaticamente.
+   * Use para re-entrar em grupos de conversa após queda de conexão.
+   */
+  onReconnected(callback: () => void): void {
+    if (!this.connection) return
+    this.connection.onreconnected(() => callback())
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
