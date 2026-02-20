@@ -8,7 +8,7 @@ O roteamento é gerenciado pelo Vue Router 4 com guards de autenticação e veri
 
 | Caminho | Nome | Componente | Auth | Descrição |
 |---|---|---|---|---|
-| `/` | `home` | `site/views/HomePage.vue` | Não | Landing page pública |
+| `/` | `home` | `site/views/LandingPage.vue` | Não | Landing page pública |
 | `/login` | `login` | `auth/views/LoginPage.vue` | Não | Página de login |
 | `/session` | — | `session/layouts/SessionLayout.vue` | Sim | Layout da área autenticada |
 | `/session/home` | `home-session` | `session/views/HomePage.vue` | Sim | Dashboard |

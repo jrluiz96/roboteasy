@@ -3,9 +3,10 @@ import { useRouter } from 'vue-router'
 import ChatWidget from '@/features/site/components/ChatWidget.vue'
 
 const router = useRouter()
+const isLoggedIn = !!localStorage.getItem('token')
 
-function goToLogin() {
-  router.push('/login')
+function goToApp() {
+  router.push(isLoggedIn ? '/session/home' : '/login')
 }
 </script>
 
@@ -15,9 +16,8 @@ function goToLogin() {
     <header class="fixed top-0 w-full bg-black/20 backdrop-blur-md z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center py-4">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg"></div>
-            <span class="text-xl font-bold text-white">MeetConnect</span>
+          <div class="flex items-center">
+            <img src="/logo-sistema.png" alt="MeetConnect" class="h-9 w-auto object-contain" />
           </div>
           <nav class="hidden md:flex items-center gap-8">
             <a href="#features" class="text-gray-300 hover:text-white transition">Recursos</a>
@@ -25,10 +25,10 @@ function goToLogin() {
             <a href="#about" class="text-gray-300 hover:text-white transition">Sobre</a>
           </nav>
           <button
-            @click="goToLogin"
+            @click="goToApp"
             class="px-5 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-full transition"
           >
-            Acessar Sistema
+            {{ isLoggedIn ? 'Ir para o Painel' : 'Acessar Sistema' }}
           </button>
         </div>
       </div>
@@ -49,10 +49,10 @@ function goToLogin() {
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
           <button
-            @click="goToLogin"
+            @click="goToApp"
             class="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full transition shadow-lg shadow-purple-500/25"
           >
-            Falar com Atendente
+            {{ isLoggedIn ? 'Ir para o Painel' : 'Falar com Atendente' }}
           </button>
           <a
             href="#features"
@@ -156,8 +156,7 @@ function goToLogin() {
     <footer id="about" class="py-12 px-4 border-t border-white/10">
       <div class="max-w-7xl mx-auto text-center">
         <div class="flex items-center justify-center gap-2 mb-4">
-          <div class="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg"></div>
-          <span class="text-lg font-bold text-white">MeetConnect</span>
+          <img src="/logo-sistema.png" alt="MeetConnect" class="h-7 w-auto object-contain" />
         </div>
         <p class="text-gray-400 text-sm">
           © 2026 MeetConnect. Todos os direitos reservados.

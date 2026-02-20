@@ -9,7 +9,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'home',
-    component: () => import('@/features/site/views/HomePage.vue'),
+    component: () => import('@/features/site/views/LandingPage.vue'),
     meta: { requiresAuth: false }
   },
 
@@ -18,6 +18,12 @@ const routes: RouteRecordRaw[] = [
     path: '/login',
     name: 'login',
     component: () => import('@/features/auth/views/LoginPage.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/features/auth/views/RegisterPage.vue'),
     meta: { requiresAuth: false }
   },
 
@@ -56,6 +62,11 @@ const routes: RouteRecordRaw[] = [
         path: 'customer-service',
         name: 'customer-service',
         component: () => import('@/features/session/views/CustomerServicePage.vue')
+      },
+      {
+        path: 'tutorial',
+        name: 'tutorial',
+        component: () => import('@/features/session/views/TutorialPage.vue')
       }
     ]
   },
@@ -103,15 +114,23 @@ router.beforeEach(async (to, _from, next) => {
       const hasAccess = userViews.some(v => v.route === to.path)
       if (!hasAccess) {
         toastStore.error('Acesso negado. Você não tem permissão para acessar esta página.')
-        next({ name: 'home-session' })
+        // Redireciona para a primeira view disponível do usuário
+        const fallback = userViews[0]?.route || '/session/home'
+        next(fallback)
         return
       }
     }
   }
   
-  // Usuário logado tentando acessar login
-  if (to.name === 'login' && hasToken) {
-    next({ name: 'home' })
+  // Usuário logado tentando acessar login ou register → vai direto para a primeira view disponível
+  if ((to.name === 'login' || to.name === 'register') && hasToken) {
+    const result = await authStore.checkAuth()
+    if (result.valid) {
+      const firstView = authStore.user?.views?.[0]?.route || '/session/home'
+      next(firstView)
+    } else {
+      next()
+    }
     return
   }
   

@@ -15,7 +15,10 @@ async function handleLogin(credentials: { username: string; password: string }) 
   loading.value = false
   
   if (success) {
-    router.push('/session/home')
+    // Carrega o usuário completo (com views) antes de redirecionar
+    await authStore.checkAuth()
+    const firstView = authStore.user?.views?.[0]?.route || '/session/home'
+    router.push(firstView)
   }
 }
 </script>
@@ -24,11 +27,9 @@ async function handleLogin(credentials: { username: string; password: string }) 
   <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
     <div class="max-w-md w-full space-y-8">
       <!-- Logo/Header -->
-      <div class="text-center">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-          RobotEasy
-        </h1>
-        <p class="mt-2 text-gray-600 dark:text-gray-400">
+      <div class="flex flex-col items-center">
+        <img src="/logo-sistema.png" alt="MeetConnect" class="h-12 w-auto object-contain mb-2" />
+        <p class="text-gray-600 dark:text-gray-400">
           Faça login para continuar
         </p>
       </div>
@@ -39,6 +40,12 @@ async function handleLogin(credentials: { username: string; password: string }) 
         :error="authStore.error"
         @submit="handleLogin"
       />
+
+      <!-- Register Link -->
+      <p class="text-center text-sm text-gray-500 dark:text-gray-400">
+        Não tem uma conta?
+        <router-link to="/register" class="text-purple-600 dark:text-purple-400 hover:underline font-medium">Cadastre-se</router-link>
+      </p>
     </div>
   </div>
 </template>

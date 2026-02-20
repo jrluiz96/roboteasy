@@ -1,134 +1,91 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useAuthStore } from '@/features/auth'
 
-// Dados de exemplo para dashboard
-const stats = ref([
-  {
-    title: 'Atendimentos Hoje',
-    value: '24',
-    icon: 'fa-headset',
-    color: 'from-blue-500 to-blue-600'
-  },
-  {
-    title: 'Clientes Online',
-    value: '8',
-    icon: 'fa-users',
-    color: 'from-green-500 to-green-600'
-  },
-  {
-    title: 'Reuniões Agendadas',
-    value: '12',
-    icon: 'fa-calendar',
-    color: 'from-purple-500 to-purple-600'
-  },
-  {
-    title: 'Satisfação',
-    value: '97%',
-    icon: 'fa-star',
-    color: 'from-yellow-500 to-yellow-600'
-  }
-])
+const authStore = useAuthStore()
 
-const recentActivity = ref([
-  { time: '14:30', description: 'Reunião com cliente ABC Corp', type: 'meeting' },
-  { time: '13:15', description: 'Chat finalizado com João Silva', type: 'chat' },
-  { time: '12:45', description: 'Novo cliente cadastrado: Maria Santos', type: 'client' },
-  { time: '11:20', description: 'Relatório mensal gerado', type: 'report' }
-])
+const updates = [
+  { version: '1.0.0', date: '20/02/2026', items: [
+    'Sistema de Tutorial para novos operadores',
+    'Monitoramento de conversas em tempo real',
+    'Chat de atendimento ao cliente via widget',
+    'Conferência entre operadores na mesma conversa',
+    'Histórico completo de conversas finalizadas',
+  ]},
+]
+
+const roadmap = [
+  { label: 'Implementar anexos nas conversas', icon: 'fa-paperclip' },
+  { label: 'Implementar área de atualização dos dados pessoais dos operadores', icon: 'fa-user-edit' },
+  { label: 'Implementar temas', icon: 'fa-palette' },
+  { label: 'Implementar Login OAuth', icon: 'fa-key' },
+  { label: 'Reset de senha na tela de login enviando link pro e-mail', icon: 'fa-envelope' },
+]
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- Header -->
-    <div>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-        Início
-      </h1>
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        Visão geral do seu atendimento
-      </p>
-    </div>
+  <div class="space-y-8 max-w-5xl mx-auto">
 
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div 
-        v-for="stat in stats" 
-        :key="stat.title"
-        class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700"
-      >
-        <div class="flex items-center">
-          <div :class="['w-12 h-12 rounded-lg bg-gradient-to-r flex items-center justify-center', stat.color]">
-            <i :class="['fas text-white', stat.icon]"></i>
-          </div>
-          <div class="ml-4">
-            <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400">
-              {{ stat.title }}
-            </h3>
-            <p class="text-2xl font-bold text-gray-900 dark:text-white">
-              {{ stat.value }}
-            </p>
-          </div>
-        </div>
+    <!-- Welcome -->
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 bg-gray-800 rounded-full flex items-center justify-center flex-shrink-0">
+        <span class="text-2xl font-bold text-white">
+          {{ authStore.currentUser?.username?.charAt(0)?.toUpperCase() || '?' }}
+        </span>
+      </div>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          Bem-vindo, {{ authStore.currentUser?.name || authStore.currentUser?.username || 'Usuário' }}!
+        </h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          Bom ter você de volta ao MeetConnect.
+        </p>
       </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Recent Activity -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Atividades Recentes
-        </h2>
-        <div class="space-y-3">
-          <div 
-            v-for="activity in recentActivity" 
-            :key="activity.time"
-            class="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
-          >
-            <div class="w-2 h-2 rounded-full bg-purple-500 mt-2 flex-shrink-0"></div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm text-gray-900 dark:text-white">
-                {{ activity.description }}
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">
-                {{ activity.time }}
-              </p>
+
+      <!-- Notas de Atualização -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+          <i class="fas fa-bullhorn text-purple-500"></i>
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Notas de Atualização</h2>
+        </div>
+        <div class="p-5 space-y-5 max-h-[400px] overflow-y-auto">
+          <div v-for="update in updates" :key="update.version">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded-full">
+                v{{ update.version }}
+              </span>
+              <span class="text-xs text-gray-400">{{ update.date }}</span>
             </div>
+            <ul class="space-y-1.5">
+              <li v-for="item in update.items" :key="item" class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <i class="fas fa-check text-green-500 mt-0.5 text-xs"></i>
+                {{ item }}
+              </li>
+            </ul>
           </div>
         </div>
       </div>
 
-      <!-- Quick Actions -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Ações Rápidas
-        </h2>
-        <div class="grid grid-cols-2 gap-3">
-          <button class="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition group">
-            <i class="fas fa-video text-purple-600 dark:text-purple-400 mb-2 text-xl"></i>
-            <p class="text-sm font-medium text-purple-700 dark:text-purple-300">
-              Nova Reunião
-            </p>
-          </button>
-          <button class="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition group">
-            <i class="fas fa-comments text-green-600 dark:text-green-400 mb-2 text-xl"></i>
-            <p class="text-sm font-medium text-green-700 dark:text-green-300">
-              Iniciar Chat
-            </p>
-          </button>
-          <button class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition group">
-            <i class="fas fa-user-plus text-blue-600 dark:text-blue-400 mb-2 text-xl"></i>
-            <p class="text-sm font-medium text-blue-700 dark:text-blue-300">
-              Novo Cliente
-            </p>
-          </button>
-          <button class="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition group">
-            <i class="fas fa-chart-line text-yellow-600 dark:text-yellow-400 mb-2 text-xl"></i>
-            <p class="text-sm font-medium text-yellow-700 dark:text-yellow-300">
-              Ver Relatórios
-            </p>
-          </button>
+      <!-- Melhorias Planejadas -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+          <i class="fas fa-rocket text-blue-500"></i>
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">Melhorias Planejadas</h2>
+        </div>
+        <div class="p-5 max-h-[400px] overflow-y-auto">
+          <ul class="space-y-3">
+            <li v-for="(item, idx) in roadmap" :key="idx" class="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/30">
+              <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                <i :class="['fas text-blue-500 text-sm', item.icon]"></i>
+              </div>
+              <span class="text-sm text-gray-700 dark:text-gray-300 pt-1">{{ item.label }}</span>
+            </li>
+          </ul>
         </div>
       </div>
+
     </div>
   </div>
 </template>

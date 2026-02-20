@@ -33,6 +33,32 @@ public class OpenController : ControllerBase
         return StatusCode(response.Code, response);
     }
 
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            var error = ApiResponse<object>.BadRequest("Todos os campos são obrigatórios");
+            return StatusCode(error.Code, error);
+        }
+
+        if (request.Password.Length < 4)
+        {
+            var error = ApiResponse<object>.BadRequest("A senha deve ter no mínimo 4 caracteres");
+            return StatusCode(error.Code, error);
+        }
+
+        var result = await _sessionService.RegisterAsync(request);
+        if (result == null)
+        {
+            var error = ApiResponse<object>.BadRequest("Usuário já existe");
+            return StatusCode(error.Code, error);
+        }
+
+        var response = ApiResponse<LoginResponse>.Success(result, "Cadastro realizado com sucesso");
+        return StatusCode(response.Code, response);
+    }
+
     [HttpGet("swagger")]
     public IActionResult Swagger()
     {

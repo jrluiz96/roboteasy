@@ -22,5 +22,9 @@ export const sessionService = {
   async get(): Promise<Session> {
     const response = await api.get<Session>('/api/v1/session')
     return response.data
+  },
+
+  async finishTutorial(): Promise<void> {
+    await api.post('/api/v1/session/finish-tutorial', {})
   }
 }

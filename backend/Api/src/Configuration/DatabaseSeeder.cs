@@ -21,8 +21,16 @@ public static class DatabaseSeeder
         {
             context.Permissions.AddRange(
                 new Permission { Name = "admin" },
-                new Permission { Name = "operator" }
+                new Permission { Name = "operator" },
+                new Permission { Name = "rookie" }
             );
+            await context.SaveChangesAsync();
+        }
+
+        // Garante que permissão rookie existe (pode ser banco pré-existente)
+        if (!await context.Permissions.AnyAsync(p => p.Name == "rookie"))
+        {
+            context.Permissions.Add(new Permission { Name = "rookie" });
             await context.SaveChangesAsync();
         }
 
@@ -67,8 +75,16 @@ public static class DatabaseSeeder
                 new View { Name = "clients", Route = "/session/clients", Icon = "fa-user" },
                 new View { Name = "history", Route = "/session/history", Icon = "fa-clock-rotate-left" },
                 new View { Name = "users", Route = "/session/users", Icon = "fa-users" },
-                new View { Name = "monitoring", Route = "/session/monitoring", Icon = "fa-chart-line" }
+                new View { Name = "monitoring", Route = "/session/monitoring", Icon = "fa-chart-line" },
+                new View { Name = "tutorial", Route = "/session/tutorial", Icon = "fa-graduation-cap" }
             );
+            await context.SaveChangesAsync();
+        }
+
+        // Garante que view tutorial existe (pode ser banco pré-existente)
+        if (!await context.Views.AnyAsync(v => v.Name == "tutorial"))
+        {
+            context.Views.Add(new View { Name = "tutorial", Route = "/session/tutorial", Icon = "fa-graduation-cap" });
             await context.SaveChangesAsync();
         }
 
@@ -77,6 +93,7 @@ public static class DatabaseSeeder
         {
             var adminPermission = await context.Permissions.FirstAsync(p => p.Name == "admin");
             var operatorPermission = await context.Permissions.FirstAsync(p => p.Name == "operator");
+            var rookiePermission = await context.Permissions.FirstAsync(p => p.Name == "rookie");
 
             var homeView = await context.Views.FirstAsync(v => v.Name == "home");
             var customerServiceView = await context.Views.FirstAsync(v => v.Name == "customer_service");
@@ -84,6 +101,7 @@ public static class DatabaseSeeder
             var historyView = await context.Views.FirstAsync(v => v.Name == "history");
             var usersView = await context.Views.FirstAsync(v => v.Name == "users");
             var monitoringView = await context.Views.FirstAsync(v => v.Name == "monitoring");
+            var tutorialView = await context.Views.FirstAsync(v => v.Name == "tutorial");
 
             context.PermissionViews.AddRange(
                 // Views acessíveis por todas as permissões (admin e operator)
@@ -96,9 +114,26 @@ public static class DatabaseSeeder
                 new PermissionView { PermissionId = adminPermission.Id, ViewId = clientsView.Id },
                 new PermissionView { PermissionId = adminPermission.Id, ViewId = historyView.Id },
                 new PermissionView { PermissionId = adminPermission.Id, ViewId = usersView.Id },
-                new PermissionView { PermissionId = adminPermission.Id, ViewId = monitoringView.Id }
+                new PermissionView { PermissionId = adminPermission.Id, ViewId = monitoringView.Id },
+
+                // Calouro: apenas tutorial
+                new PermissionView { PermissionId = rookiePermission.Id, ViewId = tutorialView.Id }
             );
             await context.SaveChangesAsync();
+        }
+
+        // Garante que PermissionView do rookie+tutorial existe (banco pré-existente)
+        {
+            var rookiePerm = await context.Permissions.FirstOrDefaultAsync(p => p.Name == "rookie");
+            var tutView = await context.Views.FirstOrDefaultAsync(v => v.Name == "tutorial");
+            if (rookiePerm != null && tutView != null)
+            {
+                if (!await context.PermissionViews.AnyAsync(pv => pv.PermissionId == rookiePerm.Id && pv.ViewId == tutView.Id))
+                {
+                    context.PermissionViews.Add(new PermissionView { PermissionId = rookiePerm.Id, ViewId = tutView.Id });
+                    await context.SaveChangesAsync();
+                }
+            }
         }
     }
 }

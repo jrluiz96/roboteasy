@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/features/auth'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
-
-const sidebarCollapsed = ref(false)
 
 // Menu items dinâmicos vindos da API via authStore
 const menuItems = computed(() => {
@@ -48,34 +46,15 @@ function handleLogout() {
   authStore.logout()
   router.push('/login')
 }
-
-function toggleSidebar() {
-  sidebarCollapsed.value = !sidebarCollapsed.value
-}
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-100 dark:bg-gray-900 flex">
     <!-- Sidebar -->
-    <aside
-      :class="[
-        'fixed inset-y-0 left-0 z-50 flex flex-col bg-gray-900 text-white transition-all duration-300',
-        sidebarCollapsed ? 'w-16' : 'w-64'
-      ]"
-    >
+    <aside class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-gray-900 text-white border-r border-gray-800">
       <!-- Logo -->
-      <div class="h-16 flex items-center justify-between px-4 border-b border-gray-800">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex-shrink-0"></div>
-          <span v-if="!sidebarCollapsed" class="text-lg font-bold">RobotEasy</span>
-        </div>
-        <button
-          @click="toggleSidebar"
-          class="p-1 hover:bg-gray-800 rounded transition"
-        >
-          <i v-if="sidebarCollapsed" class="fas fa-chevron-right text-sm"></i>
-          <i v-else class="fas fa-chevron-left text-sm"></i>
-        </button>
+      <div class="h-16 flex items-center px-4 border-b border-gray-800">
+        <img src="/logo-sistema.png" alt="MeetConnect" class="h-8 w-auto object-contain" />
       </div>
 
       <!-- Menu -->
@@ -92,7 +71,7 @@ function toggleSidebar() {
               ]"
             >
               <i :class="['text-lg flex-shrink-0', `fas ${item.icon}`]"></i>
-              <span v-if="!sidebarCollapsed" class="text-sm font-medium">{{ item.name }}</span>
+              <span class="text-sm font-medium">{{ item.name }}</span>
             </button>
           </li>
         </ul>
@@ -104,7 +83,7 @@ function toggleSidebar() {
           <div class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
             <span class="text-sm">{{ authStore.currentUser?.username?.charAt(0)?.toUpperCase() || '?' }}</span>
           </div>
-          <div v-if="!sidebarCollapsed" class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0">
             <p class="text-sm font-medium truncate">{{ authStore.currentUser?.username || 'Usuário' }}</p>
             <button @click="handleLogout" class="text-xs text-gray-400 hover:text-red-400 transition">
               Sair
@@ -115,12 +94,7 @@ function toggleSidebar() {
     </aside>
 
     <!-- Main Content -->
-    <div
-      :class="[
-        'flex-1 flex flex-col transition-all duration-300',
-        sidebarCollapsed ? 'ml-16' : 'ml-64'
-      ]"
-    >
+    <div class="flex-1 flex flex-col ml-64">
       <!-- Header -->
       <header class="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
         <h1 class="text-lg font-semibold text-gray-900 dark:text-white">

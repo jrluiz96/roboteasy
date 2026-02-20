@@ -1,7 +1,9 @@
 using Api.Configuration;
 using Api.Contracts.Requests;
 using Api.Contracts.Responses;
+using Api.Data;
 using Api.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Api.Services;
@@ -12,17 +14,20 @@ public class SessionService : ISessionService
     private readonly IPermissionViewRepository _permissionViewRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtService _jwtService;
+    private readonly AppDbContext _context;
 
     public SessionService(
         IUserRepository userRepository, 
         IPermissionViewRepository permissionViewRepository,
         IPasswordHasher passwordHasher, 
-        IJwtService jwtService)
+        IJwtService jwtService,
+        AppDbContext context)
     {
         _userRepository = userRepository;
         _permissionViewRepository = permissionViewRepository;
         _passwordHasher = passwordHasher;
         _jwtService = jwtService;
+        _context = context;
     }
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request)
@@ -86,5 +91,63 @@ public class SessionService : ISessionService
             user.Token = null;
             await _userRepository.UpdateAsync(user);
         }
+    }
+
+    public async Task<bool> FinishTutorialAsync(int userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null) return false;
+
+        // Verifica se o usuário é rookie
+        var rookiePermission = await _context.Permissions.FirstOrDefaultAsync(p => p.Name == "rookie");
+        if (rookiePermission == null || user.PermissionId != rookiePermission.Id) return false;
+
+        // Promove para operator
+        var operatorPermission = await _context.Permissions.FirstOrDefaultAsync(p => p.Name == "operator");
+        if (operatorPermission == null) return false;
+
+        user.PermissionId = operatorPermission.Id;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
+        return true;
+    }
+
+    public async Task<LoginResponse?> RegisterAsync(RegisterRequest request)
+    {
+        var username = request.Username.ToLowerInvariant().Trim();
+        var name = request.Name.Trim();
+
+        // Verifica se já existe
+        var existing = await _userRepository.GetByUsernameAsync(username);
+        if (existing != null)
+            return null;
+
+        // Busca permissão rookie
+        var rookiePermission = await _context.Permissions.FirstOrDefaultAsync(p => p.Name == "rookie");
+        if (rookiePermission == null)
+            return null;
+
+        var user = new Models.User
+        {
+            Name = name,
+            Username = username,
+            Email = request.Email.Trim(),
+            PasswordHash = _passwordHasher.Hash(request.Password),
+            PermissionId = rookiePermission.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _userRepository.CreateAsync(user);
+
+        // Gera sessão e retorna logado
+        var sessionToken = _jwtService.GenerateSessionToken();
+        user.Token = sessionToken;
+        user.SessionAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
+
+        var jwt = _jwtService.GenerateJwt(user.Id, user.Username, sessionToken);
+        var expiresAt = _jwtService.GetExpirationDate();
+
+        return new LoginResponse(user.Id, user.Username, user.Name, jwt, expiresAt);
     }
 }

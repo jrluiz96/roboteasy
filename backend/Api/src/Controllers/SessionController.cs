@@ -43,4 +43,28 @@ public class SessionController : ControllerBase
         var response = ApiResponse<SessionResponse>.Success(sessionData, "Session valid");
         return StatusCode(response.Code, response);
     }
+
+    /// <summary>
+    /// Finaliza o tutorial e promove o usuário de Calouro para Operador
+    /// </summary>
+    [HttpPost("finish-tutorial")]
+    public async Task<IActionResult> FinishTutorial()
+    {
+        var user = HttpContext.Items["CurrentUser"] as User;
+        if (user == null)
+        {
+            var error = ApiResponse<object>.Unauthorized("Session not found");
+            return StatusCode(error.Code, error);
+        }
+
+        var success = await _sessionService.FinishTutorialAsync(user.Id);
+        if (!success)
+        {
+            var error = ApiResponse<object>.BadRequest("N\u00e3o foi poss\u00edvel finalizar o tutorial");
+            return StatusCode(error.Code, error);
+        }
+
+        var response = ApiResponse<object>.Success(null!, "Tutorial finalizado com sucesso");
+        return StatusCode(response.Code, response);
+    }
 }
