@@ -1,9 +1,7 @@
 using Api.Configuration;
 using Api.Contracts.Requests;
 using Api.Contracts.Responses;
-using Api.Data;
 using Api.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Api.Services;
@@ -11,23 +9,23 @@ namespace Api.Services;
 public class SessionService : ISessionService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IPermissionRepository _permissionRepository;
     private readonly IPermissionViewRepository _permissionViewRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtService _jwtService;
-    private readonly AppDbContext _context;
 
     public SessionService(
-        IUserRepository userRepository, 
+        IUserRepository userRepository,
+        IPermissionRepository permissionRepository,
         IPermissionViewRepository permissionViewRepository,
         IPasswordHasher passwordHasher, 
-        IJwtService jwtService,
-        AppDbContext context)
+        IJwtService jwtService)
     {
         _userRepository = userRepository;
+        _permissionRepository = permissionRepository;
         _permissionViewRepository = permissionViewRepository;
         _passwordHasher = passwordHasher;
         _jwtService = jwtService;
-        _context = context;
     }
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request)
@@ -99,11 +97,11 @@ public class SessionService : ISessionService
         if (user == null) return false;
 
         // Verifica se o usuário é rookie
-        var rookiePermission = await _context.Permissions.FirstOrDefaultAsync(p => p.Name == "rookie");
+        var rookiePermission = await _permissionRepository.GetByNameAsync("rookie");
         if (rookiePermission == null || user.PermissionId != rookiePermission.Id) return false;
 
         // Promove para operator
-        var operatorPermission = await _context.Permissions.FirstOrDefaultAsync(p => p.Name == "operator");
+        var operatorPermission = await _permissionRepository.GetByNameAsync("operator");
         if (operatorPermission == null) return false;
 
         user.PermissionId = operatorPermission.Id;
@@ -123,7 +121,7 @@ public class SessionService : ISessionService
             return null;
 
         // Busca permissão rookie
-        var rookiePermission = await _context.Permissions.FirstOrDefaultAsync(p => p.Name == "rookie");
+        var rookiePermission = await _permissionRepository.GetByNameAsync("rookie");
         if (rookiePermission == null)
             return null;
 

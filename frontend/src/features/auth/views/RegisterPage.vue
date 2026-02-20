@@ -49,8 +49,9 @@ async function handleRegister() {
     await authStore.checkAuth()
 
     toastStore.success('Cadastro realizado com sucesso!')
-    const firstView = authStore.user?.views?.[0]?.route || '/session/home'
-    router.push(firstView)
+    const views = authStore.user?.views || []
+    const hasHome = views.some(v => v.route === '/session/home')
+    router.push(hasHome ? '/session/home' : (views[0]?.route || '/session/home'))
   } catch (err: any) {
     error.value = err?.response?.data?.message || 'Erro ao cadastrar. Tente novamente.'
   } finally {

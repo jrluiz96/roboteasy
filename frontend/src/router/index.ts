@@ -126,8 +126,9 @@ router.beforeEach(async (to, _from, next) => {
   if ((to.name === 'login' || to.name === 'register') && hasToken) {
     const result = await authStore.checkAuth()
     if (result.valid) {
-      const firstView = authStore.user?.views?.[0]?.route || '/session/home'
-      next(firstView)
+      const views = authStore.user?.views || []
+      const hasHome = views.some(v => v.route === '/session/home')
+      next(hasHome ? '/session/home' : (views[0]?.route || '/session/home'))
     } else {
       next()
     }

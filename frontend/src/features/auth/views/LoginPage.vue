@@ -17,8 +17,9 @@ async function handleLogin(credentials: { username: string; password: string }) 
   if (success) {
     // Carrega o usuário completo (com views) antes de redirecionar
     await authStore.checkAuth()
-    const firstView = authStore.user?.views?.[0]?.route || '/session/home'
-    router.push(firstView)
+    const views = authStore.user?.views || []
+    const hasHome = views.some(v => v.route === '/session/home')
+    router.push(hasHome ? '/session/home' : (views[0]?.route || '/session/home'))
   }
 }
 </script>
